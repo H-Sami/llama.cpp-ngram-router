@@ -184,10 +184,18 @@ struct common_speculative_impl {
             const llama_tokens & /*prompt*/,
             llama_token /*id_last*/,
             int32_t /*n_max*/,
-            llama_tokens & /*result*/) {
+            llama_tokens & /*result*/,
+            common_speculative_span * /*span*/) {
     }
 
     virtual void accept(llama_seq_id seq_id, uint16_t n_accepted, bool is_other) = 0;
+
+    virtual void accept_extension(
+            llama_seq_id seq_id,
+            uint16_t n_accepted,
+            const common_speculative_span & /*span*/) {
+        accept(seq_id, n_accepted, true);
+    }
 
     // (optional) serialize/restore per-seq internal state (e.g. eagle3's deferred boundary).
     virtual bool get_state(llama_seq_id /*seq_id*/, std::vector<uint8_t> & /*data*/) const { return false; }
@@ -1864,7 +1872,8 @@ struct common_speculative_impl_ngram_simple : public common_speculative_impl {
             const llama_tokens & prompt,
             llama_token id_last,
             int32_t n_max,
-            llama_tokens & result) override {
+            llama_tokens & result,
+            common_speculative_span * /*span*/) override {
         result = common_ngram_simple_draft(config, prompt, id_last);
         if (n_max > 0 && (int) result.size() > n_max) {
             result.resize(n_max);
@@ -1879,20 +1888,23 @@ struct common_speculative_impl_ngram_simple : public common_speculative_impl {
 struct common_speculative_impl_ngram_map_k : public common_speculative_impl {
     // n_seq configs
     std::vector<common_ngram_map> config;
+    const bool controller_managed;
 
     common_speculative_impl_ngram_map_k(
             const common_ngram_map & config,
-            uint32_t n_seq)
+            uint32_t n_seq,
+            bool controller_managed)
         : common_speculative_impl(config.key_only ? COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K
             : COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V, n_seq, config.size_value)
+        , controller_managed(controller_managed)
     {
         for (uint32_t i = 0; i < n_seq; i++) {
             this->config.push_back(config);
         }
 
         SPC_TRC("adding speculative implementation '%s'\n", common_speculative_type_to_str(this->type).c_str());
-        SPC_TRC("- size_key=%d, size_value=%d, key_only=%d, min_hits=%d\n",
-                config.size_key, config.size_value, config.key_only, config.min_hits);
+        SPC_TRC("- size_key=%d, size_value=%d, key_only=%d, min_hits=%d, controller_managed=%d\n",
+                config.size_key, config.size_value, config.key_only, config.min_hits, controller_managed);
     }
 
     void begin(llama_seq_id seq_id, const llama_tokens & prompt) override {
@@ -1915,7 +1927,9 @@ struct common_speculative_impl_ngram_map_k : public common_speculative_impl {
                 continue;
             }
 
-            common_ngram_map_draft(config[seq_id], *dp.prompt, dp.id_last, *dp.result);
+            common_ngram_map_draft(
+                    config[seq_id], *dp.prompt, dp.id_last, *dp.result,
+                    /* limit_by_acceptance = */ !controller_managed);
         }
     }
 
@@ -1924,9 +1938,17 @@ struct common_speculative_impl_ngram_map_k : public common_speculative_impl {
             const llama_tokens & prompt,
             llama_token id_last,
             int32_t n_max,
-            llama_tokens & result) override {
-        auto transaction = config[seq_id];
-        common_ngram_map_draft(transaction, prompt, id_last, result);
+            llama_tokens & result,
+            common_speculative_span * span) override {
+        common_ngram_map_draft_result feedback;
+        common_ngram_map_draft_readonly(
+                config[seq_id], prompt, id_last, result, &feedback,
+                /* limit_by_acceptance = */ !controller_managed);
+        if (span != nullptr && feedback.valid) {
+            span->feedback_valid = true;
+            span->feedback_key = feedback.key_idx;
+            span->feedback_value = feedback.value_idx;
+        }
         if (n_max > 0 && (int) result.size() > n_max) {
             result.resize(n_max);
         }
@@ -1941,6 +1963,19 @@ struct common_speculative_impl_ngram_map_k : public common_speculative_impl {
 
         common_ngram_map_accept(config[seq_id], n_accepted);
     }
+
+    void accept_extension(
+            llama_seq_id seq_id,
+            uint16_t n_accepted,
+            const common_speculative_span & span) override {
+        GGML_ASSERT((seq_id < (llama_seq_id) config.size()));
+
+        common_ngram_map_draft_result feedback;
+        feedback.valid = span.feedback_valid;
+        feedback.key_idx = span.feedback_key;
+        feedback.value_idx = span.feedback_value;
+        common_ngram_map_accept(config[seq_id], feedback, n_accepted);
+    }
 };
 
 struct common_speculative_impl_ngram_mod : public common_speculative_impl {
@@ -1951,6 +1986,7 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
 
     // enable trace logging if LLAMA_TRACE is set
     const bool verbose;
+    const bool controller_managed;
 
     struct seq_info {
         // the last position in the prompt that was added to the ngram container
@@ -1967,16 +2003,18 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
 
     common_speculative_impl_ngram_mod(
             const common_params_speculative & params,
-            uint32_t n_seq)
+            uint32_t n_seq,
+            bool controller_managed)
         : common_speculative_impl(COMMON_SPECULATIVE_TYPE_NGRAM_MOD, n_seq, params.ngram_mod.n_max)
         , params(params.ngram_mod)
         , mod(params.ngram_mod.n_match, 4*1024*1024)
-        , verbose(std::getenv("LLAMA_TRACE") != nullptr) {
+        , verbose(std::getenv("LLAMA_TRACE") != nullptr)
+        , controller_managed(controller_managed) {
         static_assert(sizeof(llama_token) == sizeof(common_ngram_mod::entry_t));
 
         SPC_TRC("%s", "adding speculative implementation 'ngram-mod'\n");
-        SPC_TRC("- n_match=%d, n_max=%d, n_min=%d\n",
-                this->params.n_match, this->params.n_max, this->params.n_min);
+        SPC_TRC("- n_match=%d, n_max=%d, n_min=%d, controller_managed=%d\n",
+                this->params.n_match, this->params.n_max, this->params.n_min, controller_managed);
         SPC_TRC("- mod size=%zu (%.3f MB)\n",
                 mod.size(), (float)(mod.size_bytes())/1024/1024);
 
@@ -2095,7 +2133,8 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
             const llama_tokens & prompt,
             llama_token id_last,
             int32_t n_max,
-            llama_tokens & result) override {
+            llama_tokens & result,
+            common_speculative_span * /*span*/) override {
         const size_t n = mod.get_n();
         if (prompt.size() < n) {
             return;
@@ -2123,7 +2162,7 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
     }
 
     void accept(llama_seq_id seq_id, uint16_t n_accepted, bool is_other) override {
-        if (is_other) {
+        if (is_other || controller_managed) {
             return;
         }
 
@@ -2302,8 +2341,15 @@ struct common_speculative {
 
     common_speculative_controller controller;
 
+    int32_t context_capacity;
+    int32_t batch_size;
+    int32_t ubatch_size;
+    uint32_t global_max_verify;
+    uint32_t fairness_cursor;
+
     std::vector<std::vector<common_speculative_candidate>> candidates;
     std::vector<uint64_t> selected_candidate_id;
+    std::vector<uint16_t> reserved_verify_tokens;
     std::vector<int64_t> verification_time_us;
     std::vector<bool> ordinary_pending;
 
@@ -2311,6 +2357,7 @@ struct common_speculative {
     std::unique_ptr<std::ifstream> replay;
 
     uint64_t next_candidate_id = 1;
+    common_speculative_controller_metrics metrics;
 };
 
 static common_ngram_map get_common_ngram_map(
@@ -2520,6 +2567,10 @@ int32_t common_speculative_n_max(const common_params_speculative * spec) {
 
     if (spec->controller.mode != COMMON_SPECULATIVE_CONTROLLER_MODE_OFF && mtp_max > 0 && ngram_max > 0) {
         n_max = std::max(n_max, mtp_max + ngram_max);
+    }
+
+    if (spec->controller.mode != COMMON_SPECULATIVE_CONTROLLER_MODE_OFF && spec->controller.max_verify > 0) {
+        n_max = std::max(mtp_max, std::min<int32_t>(n_max, spec->controller.max_verify));
     }
 
     return n_max;
@@ -2887,18 +2938,22 @@ common_speculative * common_speculative_init(common_params_speculative & params,
             case COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K: {
                 impls.push_back(
                         std::make_unique<common_speculative_impl_ngram_map_k>(
-                            get_common_ngram_map(config.type, config.params.ngram_map_k), n_seq));
+                            get_common_ngram_map(config.type, config.params.ngram_map_k), n_seq,
+                            params.controller.mode != COMMON_SPECULATIVE_CONTROLLER_MODE_OFF));
                 break;
             }
             case COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V: {
                 impls.push_back(
                         std::make_unique<common_speculative_impl_ngram_map_k>(
-                            get_common_ngram_map(config.type, config.params.ngram_map_k4v), n_seq));
+                            get_common_ngram_map(config.type, config.params.ngram_map_k4v), n_seq,
+                            params.controller.mode != COMMON_SPECULATIVE_CONTROLLER_MODE_OFF));
                 break;
             }
             case COMMON_SPECULATIVE_TYPE_NGRAM_MOD: {
                 impls.push_back(
-                        std::make_unique<common_speculative_impl_ngram_mod>(config.params, n_seq));
+                        std::make_unique<common_speculative_impl_ngram_mod>(
+                            config.params, n_seq,
+                            params.controller.mode != COMMON_SPECULATIVE_CONTROLLER_MODE_OFF));
                 break;
             }
             case COMMON_SPECULATIVE_TYPE_NGRAM_CACHE: {
@@ -2954,15 +3009,31 @@ common_speculative * common_speculative_init(common_params_speculative & params,
         /* .impls                 = */ std::move(impls),
         /* .impl_last             = */ std::vector<common_speculative_impl *>(n_seq, nullptr),
         /* .synth_probs           = */ {},
-        /* .controller            = */ common_speculative_controller(params.controller.mode, params.controller.safety_margin, params.controller.decay, params.controller.warmup),
+        /* .controller            = */ common_speculative_controller(params.controller.mode, params.controller.safety_margin, params.controller.decay, params.controller.warmup, params.controller.max_verify, params.controller.persistence, n_seq),
+        /* .context_capacity      = */ params.draft.ctx_tgt ? (int32_t) llama_n_ctx(params.draft.ctx_tgt) : 0,
+        /* .batch_size            = */ params.draft.ctx_tgt ? (int32_t) llama_n_batch(params.draft.ctx_tgt) : 0,
+        /* .ubatch_size           = */ params.draft.ctx_tgt ? (int32_t) llama_n_ubatch(params.draft.ctx_tgt) : 0,
+        /* .global_max_verify     = */ params.controller.global_max_verify,
+        /* .fairness_cursor       = */ 0,
         /* .candidates            = */ std::vector<std::vector<common_speculative_candidate>>(n_seq),
         /* .selected_candidate_id = */ std::vector<uint64_t>(n_seq, 0),
+        /* .reserved_verify_tokens = */ std::vector<uint16_t>(n_seq, 0),
         /* .verification_time_us  = */ std::vector<int64_t>(n_seq, 0),
         /* .ordinary_pending      = */ std::vector<bool>(n_seq, false),
         /* .trace                 = */ nullptr,
         /* .replay                = */ nullptr,
         /* .next_candidate_id     = */ 1,
+        /* .metrics               = */ {},
     });
+
+    result->metrics.enabled = controller_enabled;
+    for (const auto & impl : result->impls) {
+        common_speculative_producer_metrics producer;
+        producer.producer_id = impl->producer_id;
+        producer.configuration_name = impl->configuration_name;
+        producer.type = common_speculative_type_to_str(impl->type);
+        result->metrics.producers.push_back(std::move(producer));
+    }
 
     const int32_t n_max_configured = common_speculative_n_max(&params);
     const int32_t n_max_effective  = common_speculative_n_max(result.get());
@@ -3045,13 +3116,28 @@ void common_speculative_begin(common_speculative * spec, llama_seq_id seq_id, co
         return;
     }
 
-    spec->controller.begin_request();
+    common_speculative_end(spec, seq_id);
+    spec->controller.begin_request(seq_id);
 
     for (auto & impl : spec->impls) {
         common_time_meas tm(impl->t_begin_us, !impl->gen_perf);
         impl->begin(seq_id, prompt);
         impl->n_call_begin++;
     }
+}
+
+void common_speculative_end(common_speculative * spec, llama_seq_id seq_id) {
+    if (spec == nullptr) {
+        return;
+    }
+
+    GGML_ASSERT(seq_id >= 0 && seq_id < (llama_seq_id) spec->dparams.size());
+    spec->impl_last[seq_id] = nullptr;
+    spec->candidates[seq_id].clear();
+    spec->selected_candidate_id[seq_id] = 0;
+    spec->reserved_verify_tokens[seq_id] = 0;
+    spec->verification_time_us[seq_id] = 0;
+    spec->ordinary_pending[seq_id] = false;
 }
 
 bool common_speculative_process(common_speculative * spec, const llama_batch & batch) {
@@ -3141,6 +3227,14 @@ static void common_speculative_trace_decision(
         << ",\"selected_index\":" << selection.candidate_index
         << ",\"prefix_length\":" << selection.prefix_length
         << ",\"utility\":" << std::setprecision(12) << selection.utility
+        << ",\"admission_lower_confidence\":" << selection.admission_lower_confidence
+        << ",\"admission_upper_confidence\":" << selection.admission_upper_confidence
+        << ",\"admission_evidence\":" << selection.admission_evidence
+        << ",\"admission_bootstrap\":" << (selection.admission_bootstrap ? "true" : "false")
+        << ",\"challenger_cooldown_remaining\":" << selection.challenger_cooldown_remaining
+        << ",\"challenger_failure_streak\":" << (uint32_t) selection.challenger_failure_streak
+        << ",\"unbudgeted_prefix_length\":" << selection.unbudgeted_prefix_length
+        << ",\"budget_limited\":" << (selection.budget_limited ? "true" : "false")
         << ",\"candidates\":[";
     for (size_t i = 0; i < candidates.size(); ++i) {
         if (i > 0) {
@@ -3154,6 +3248,18 @@ static void common_speculative_trace_decision(
             << "\",\"proposal_time_us\":" << candidate.metadata.proposal_time_us
             << ",\"cycle_proposal_time_us\":" << candidate.metadata.cycle_proposal_time_us
             << ",\"context_length\":" << candidate.metadata.context_length
+            << ",\"context_capacity\":" << candidate.metadata.context_capacity
+            << ",\"batch_size\":" << candidate.metadata.batch_size
+            << ",\"ubatch_size\":" << candidate.metadata.ubatch_size
+            << ",\"active_slots\":" << candidate.metadata.active_slots
+            << ",\"agreement_prefix\":[";
+        for (size_t j = 0; j < candidate.metadata.agreement_prefix.size(); ++j) {
+            if (j > 0) {
+                out << ',';
+            }
+            out << candidate.metadata.agreement_prefix[j];
+        }
+        out << "]"
             << ",\"provenance\":[";
         for (size_t j = 0; j < candidate.provenance.size(); ++j) {
             if (j > 0) {
@@ -3163,7 +3269,10 @@ static void common_speculative_trace_decision(
             out << "{\"producer_id\":" << span.producer_id
                 << ",\"configuration_id\":" << span.configuration_id
                 << ",\"begin\":" << span.begin
-                << ",\"end\":" << span.end << '}';
+                << ",\"end\":" << span.end
+                << ",\"feedback_valid\":" << (span.feedback_valid ? "true" : "false")
+                << ",\"feedback_key\":" << span.feedback_key
+                << ",\"feedback_value\":" << span.feedback_value << '}';
         }
         out << "],\"tokens\":[";
         for (size_t j = 0; j < candidate.tokens.size(); ++j) {
@@ -3180,29 +3289,37 @@ static void common_speculative_trace_decision(
 
 static void common_speculative_draft_controlled(common_speculative * spec) {
     auto & dparams = spec->dparams;
-    const bool allow_challengers = spec->controller.allow_challengers();
 
     std::vector<bool> requested(dparams.size(), false);
+    std::vector<bool> allow_challengers(dparams.size(), false);
     std::vector<int64_t> cycle_proposal_time_us(dparams.size(), 0);
     for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
         requested[seq_id] = dparams[seq_id].drafting;
+        if (!requested[seq_id]) {
+            continue;
+        }
+        allow_challengers[seq_id] = spec->controller.allow_challengers(seq_id);
         spec->impl_last[seq_id] = nullptr;
         spec->selected_candidate_id[seq_id] = 0;
         spec->verification_time_us[seq_id] = 0;
         spec->ordinary_pending[seq_id] = false;
         spec->candidates[seq_id].clear();
     }
+    const int32_t active_slots = std::count(requested.begin(), requested.end(), true);
 
     for (auto & impl : spec->impls) {
-        if (!allow_challengers && impl->type != COMMON_SPECULATIVE_TYPE_DRAFT_MTP) {
-            continue;
-        }
         auto local_params = dparams;
         std::vector<llama_tokens> results(dparams.size());
 
         for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) local_params.size(); ++seq_id) {
-            local_params[seq_id].drafting = requested[seq_id];
+            local_params[seq_id].drafting = requested[seq_id] &&
+                (impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP || allow_challengers[seq_id]);
             local_params[seq_id].result = &results[seq_id];
+            if (spec->controller.max_verify() > 0) {
+                local_params[seq_id].n_max = std::min<int32_t>(
+                        local_params[seq_id].n_max,
+                        std::max<uint32_t>(32, spec->controller.max_verify()));
+            }
         }
 
         const int64_t t_start_us = ggml_time_us();
@@ -3223,7 +3340,9 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
             }
 
             auto & tokens = results[seq_id];
-            const int32_t n_max = dparams[seq_id].n_max;
+            const int32_t n_max = spec->controller.max_verify() > 0
+                ? std::min<int32_t>(dparams[seq_id].n_max, std::max<uint32_t>(32, spec->controller.max_verify()))
+                : dparams[seq_id].n_max;
             if (n_max > 0 && (int) tokens.size() > n_max) {
                 tokens.resize(n_max);
             }
@@ -3236,6 +3355,10 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
             candidate.tokens = std::move(tokens);
             candidate.metadata.proposal_time_us = proposal_time_us;
             candidate.metadata.context_length = dparams[seq_id].prompt->size();
+            candidate.metadata.context_capacity = spec->context_capacity;
+            candidate.metadata.batch_size = spec->batch_size;
+            candidate.metadata.ubatch_size = spec->ubatch_size;
+            candidate.metadata.active_slots = active_slots;
             candidate.provenance.push_back({
                 /* .producer_id      = */ impl->producer_id,
                 /* .configuration_id = */ impl->producer_id,
@@ -3255,10 +3378,12 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
         }
 
         for (const auto & mtp : mtp_candidates) {
-            if (!allow_challengers) {
+            if (!allow_challengers[seq_id]) {
                 break;
             }
-            const int32_t n_max = dparams[seq_id].n_max;
+            const int32_t n_max = spec->controller.max_verify() > 0
+                ? std::min<int32_t>(dparams[seq_id].n_max, std::max<uint32_t>(32, spec->controller.max_verify()))
+                : dparams[seq_id].n_max;
             const int32_t remaining = n_max > 0 ? n_max - (int32_t) mtp.tokens.size() : 0;
             if (mtp.tokens.empty() || remaining <= 0) {
                 continue;
@@ -3276,9 +3401,15 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
                     continue;
                 }
 
+                common_speculative_span extension_span {
+                    /* .producer_id      = */ impl->producer_id,
+                    /* .configuration_id = */ impl->producer_id,
+                    /* .begin            = */ (uint16_t) mtp.tokens.size(),
+                    /* .end              = */ (uint16_t) mtp.tokens.size(),
+                };
                 llama_tokens extension;
                 const int64_t t_start_us = ggml_time_us();
-                impl->draft_extension(seq_id, hypothetical, mtp.tokens.back(), remaining, extension);
+                impl->draft_extension(seq_id, hypothetical, mtp.tokens.back(), remaining, extension, &extension_span);
                 const int64_t proposal_time_us = ggml_time_us() - t_start_us;
                 cycle_proposal_time_us[seq_id] += proposal_time_us;
 
@@ -3295,24 +3426,28 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
                 fused.tokens.insert(fused.tokens.end(), extension.begin(), extension.end());
                 fused.metadata.proposal_time_us = mtp.metadata.proposal_time_us + proposal_time_us;
                 fused.metadata.context_length = dparams[seq_id].prompt->size();
+                fused.metadata.context_capacity = spec->context_capacity;
+                fused.metadata.batch_size = spec->batch_size;
+                fused.metadata.ubatch_size = spec->ubatch_size;
+                fused.metadata.active_slots = active_slots;
                 fused.provenance.push_back({
                     /* .producer_id      = */ mtp.producer_id,
                     /* .configuration_id = */ mtp.configuration_id,
                     /* .begin            = */ 0,
                     /* .end              = */ (uint16_t) mtp.tokens.size(),
                 });
-                fused.provenance.push_back({
-                    /* .producer_id      = */ impl->producer_id,
-                    /* .configuration_id = */ impl->producer_id,
-                    /* .begin            = */ (uint16_t) mtp.tokens.size(),
-                    /* .end              = */ (uint16_t) fused.tokens.size(),
-                });
+                extension_span.end = (uint16_t) fused.tokens.size();
+                fused.provenance.push_back(extension_span);
                 spec->candidates[seq_id].push_back(std::move(fused));
             }
         }
     }
 
+    std::vector<common_speculative_selection> selections(dparams.size());
     for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
+        if (!requested[seq_id]) {
+            continue;
+        }
         auto & candidates = spec->candidates[seq_id];
         for (auto & candidate : candidates) {
             candidate.metadata.cycle_proposal_time_us = cycle_proposal_time_us[seq_id];
@@ -3324,7 +3459,8 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
             }
         }
 
-        auto selection = spec->controller.select(candidates);
+        auto & selection = selections[seq_id];
+        selection = spec->controller.select(candidates, seq_id);
         if (spec->controller.mode() == COMMON_SPECULATIVE_CONTROLLER_MODE_REPLAY) {
             uint32_t producer_id = 0;
             uint16_t prefix_length = 0;
@@ -3344,6 +3480,53 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
                 throw std::runtime_error("speculative controller replay producer is unavailable: " + std::to_string(producer_id));
             }
         }
+    }
+
+    uint64_t pending_verify_tokens = 0;
+    for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
+        if (requested[seq_id]) {
+            spec->reserved_verify_tokens[seq_id] = 0;
+        } else {
+            pending_verify_tokens += spec->reserved_verify_tokens[seq_id];
+        }
+    }
+    if (spec->global_max_verify > 0 && pending_verify_tokens >= spec->global_max_verify) {
+        for (auto & selection : selections) {
+            selection.unbudgeted_prefix_length = selection.prefix_length;
+            selection.budget_limited = selection.prefix_length > 0;
+            selection.candidate_index = -1;
+            selection.prefix_length = 0;
+            selection.utility = 0.0;
+        }
+    } else {
+        const uint32_t available_verify_tokens = spec->global_max_verify > 0
+            ? spec->global_max_verify - pending_verify_tokens
+            : 0;
+        common_speculative_apply_global_budget(selections, available_verify_tokens, spec->fairness_cursor);
+    }
+
+    for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
+        if (!requested[seq_id]) {
+            continue;
+        }
+        auto & candidates = spec->candidates[seq_id];
+        auto & selection = selections[seq_id];
+        spec->metrics.decisions++;
+        if (selection.challenger_cooldown_remaining > 0) {
+            spec->metrics.cooldown_decisions++;
+        }
+        if (selection.budget_limited) {
+            spec->metrics.budget_limited_decisions++;
+            spec->metrics.budget_tokens_removed += selection.unbudgeted_prefix_length - selection.prefix_length;
+        }
+        for (const auto & candidate : candidates) {
+            for (const auto & span : candidate.provenance) {
+                GGML_ASSERT(span.producer_id > 0 && span.producer_id <= spec->metrics.producers.size());
+                auto & producer = spec->metrics.producers[span.producer_id - 1];
+                producer.proposals++;
+                producer.proposed_tokens += span.end - span.begin;
+            }
+        }
 
         common_speculative_trace_decision(spec, seq_id, candidates, selection);
         if (selection.candidate_index >= 0) {
@@ -3359,8 +3542,21 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
             }
             *dparams[seq_id].result = candidate.tokens;
             spec->selected_candidate_id[seq_id] = candidate.candidate_id;
+            spec->reserved_verify_tokens[seq_id] = candidate.tokens.size();
+
+            if (candidate.provenance.size() > 1) {
+                spec->metrics.fused_selections++;
+            } else if (candidate.type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP) {
+                spec->metrics.mtp_selections++;
+            } else {
+                spec->metrics.ngram_selections++;
+            }
 
             for (const auto & span : candidate.provenance) {
+                GGML_ASSERT(span.producer_id > 0 && span.producer_id <= spec->metrics.producers.size());
+                auto & producer = spec->metrics.producers[span.producer_id - 1];
+                producer.selections++;
+                producer.selected_tokens += span.end - span.begin;
                 for (auto & impl : spec->impls) {
                     if (impl->producer_id == span.producer_id) {
                         if (spec->impl_last[seq_id] == nullptr) {
@@ -3377,7 +3573,9 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
                     common_speculative_type_to_str(candidate.type).c_str(), candidate.candidate_id,
                     candidate.tokens.size(), selection.utility);
         } else {
+            spec->reserved_verify_tokens[seq_id] = 0;
             spec->ordinary_pending[seq_id] = true;
+            spec->metrics.abstentions++;
         }
 
         dparams[seq_id].drafting = false;
@@ -3416,6 +3614,7 @@ static void common_speculative_accept_impl(
         const llama_tokens & realized) {
     GGML_ASSERT(spec != nullptr);
     GGML_ASSERT(seq_id >= 0 && seq_id < (llama_seq_id) spec->impl_last.size());
+    spec->reserved_verify_tokens[seq_id] = 0;
 
     auto update_stats = [&](common_speculative_impl & impl, uint16_t accepted) {
         if (impl.n_acc_tokens_per_pos.size() < accepted) {
@@ -3476,11 +3675,30 @@ static void common_speculative_accept_impl(
                 : 0;
             const bool fused_extension = selected->provenance.size() > 1 && impl->type != COMMON_SPECULATIVE_TYPE_DRAFT_MTP;
             const uint16_t state_accepted = impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP ? n_accepted : accepted;
+            const bool span_observed = !fused_extension || n_accepted >= span.begin;
+
+            GGML_ASSERT(span.producer_id > 0 && span.producer_id <= spec->metrics.producers.size());
+            auto & producer = spec->metrics.producers[span.producer_id - 1];
+            if (span_observed) {
+                const uint16_t observed = std::min<uint16_t>(
+                        span.end - span.begin,
+                        accepted + (n_accepted < span.end ? 1 : 0));
+                producer.observed_tokens += observed;
+                producer.accepted_tokens += accepted;
+            } else {
+                producer.censored_selections++;
+            }
 
             {
                 common_time_meas tm(impl->t_accept_us, !impl->gen_perf);
-                update_stats(*impl, accepted);
-                impl->accept(seq_id, state_accepted, fused_extension);
+                if (span_observed) {
+                    update_stats(*impl, accepted);
+                }
+                if (fused_extension && span_observed) {
+                    impl->accept_extension(seq_id, accepted, span);
+                } else {
+                    impl->accept(seq_id, state_accepted, fused_extension);
+                }
                 impl->n_call_accept++;
             }
             contributed[i] = true;
@@ -3499,7 +3717,8 @@ static void common_speculative_accept_impl(
             spec->selected_candidate_id[seq_id],
             realized,
             spec->verification_time_us[seq_id],
-            0);
+            0,
+            seq_id);
 
     if (spec->trace) {
         auto & out = *spec->trace;
@@ -3553,7 +3772,7 @@ void common_speculative_add_verification_time(
     }
     if (spec->selected_candidate_id[seq_id] == 0) {
         if (spec->ordinary_pending[seq_id]) {
-            spec->controller.observe_ordinary(verification_time_us);
+            spec->controller.observe_ordinary(verification_time_us, seq_id);
             spec->ordinary_pending[seq_id] = false;
             if (spec->trace) {
                 *spec->trace << "{\"event\":\"feedback\",\"seq_id\":" << seq_id
@@ -3565,6 +3784,11 @@ void common_speculative_add_verification_time(
         return;
     }
     spec->verification_time_us[seq_id] += verification_time_us;
+}
+
+common_speculative_controller_metrics common_speculative_get_controller_metrics(
+        const common_speculative * spec) {
+    return spec != nullptr ? spec->metrics : common_speculative_controller_metrics{};
 }
 
 // TODO: support the case of more than one speculative implementations having a state

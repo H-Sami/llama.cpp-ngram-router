@@ -224,13 +224,21 @@ void common_ngram_map_begin(
     map.size_last_begin = size_begin;
 }
 
-void common_ngram_map_draft(common_ngram_map & map,
+static void common_ngram_map_draft_impl(
+        const common_ngram_map & map,
+        common_ngram_map * commit,
         const llama_tokens & inp, llama_token sampled,
-        llama_tokens & draft) {
-    // reset last key and value.
-    map.last_draft_created   = false;
-    map.last_draft_key_idx   = 0;
-    map.last_draft_value_idx = 0;
+        llama_tokens & draft,
+        common_ngram_map_draft_result * result,
+        bool limit_by_acceptance) {
+    if (result != nullptr) {
+        *result = {};
+    }
+    if (commit != nullptr) {
+        commit->last_draft_created   = false;
+        commit->last_draft_key_idx   = 0;
+        commit->last_draft_value_idx = 0;
+    }
 
     const size_t cur_len = inp.size();
     const uint16_t n = map.size_key;
@@ -247,7 +255,9 @@ void common_ngram_map_draft(common_ngram_map & map,
         // Should not happen because of common_ngram_map_begin().
         GGML_ABORT("%s: map.idx_last_check > cur_len: %zu > %zu", __func__, map.idx_last_check, cur_len);
     }
-    map.idx_last_check = cur_len;
+    if (commit != nullptr) {
+        commit->idx_last_check = cur_len;
+    }
 
     // search pattern, the key n-gram
     std::vector<llama_token> key_tokens;
@@ -321,7 +331,7 @@ void common_ngram_map_draft(common_ngram_map & map,
             cur_len, n, m, key_tokens.size(), sampled, match_pos);
     }
 
-    if (!map.key_map.empty()) {
+    if (commit != nullptr && !map.key_map.empty()) {
         // Add hashes of new ngrams in key_map.
         //
         // Use the same order as above.
@@ -329,8 +339,8 @@ void common_ngram_map_draft(common_ngram_map & map,
             for (size_t j = map.size_last_begin - n - m - 1; j > map.key_map_last_idx; --j) {
                 // compute hash and store index of ngram at idx j in the map.
                 uint32_t idx_hash = (common_ngram_map_hash(inp, j, n) % map.key_map.size());
-                if (map.key_map[idx_hash] == 0) {
-                    map.key_map[idx_hash] = j; // collisions may occur
+                if (commit->key_map[idx_hash] == 0) {
+                    commit->key_map[idx_hash] = j; // collisions may occur
                 }
             }
         }
@@ -338,11 +348,11 @@ void common_ngram_map_draft(common_ngram_map & map,
         for (size_t j = cur_len - n - m - 1; j > map.size_last_begin && j > map.key_map_last_idx; --j) {
             // compute hash and store index of ngram at idx j in the map.
             uint32_t idx_hash = (common_ngram_map_hash(inp, j, n) % map.key_map.size());
-            if (map.key_map[idx_hash] == 0) {
-                map.key_map[idx_hash] = j;
+            if (commit->key_map[idx_hash] == 0) {
+                commit->key_map[idx_hash] = j;
             }
         }
-        map.key_map_last_idx = std::max(static_cast<uint32_t>(cur_len - n - m - 1), map.key_map_last_idx);
+        commit->key_map_last_idx = std::max(static_cast<uint32_t>(cur_len - n - m - 1), map.key_map_last_idx);
     }
 
     if (match_pos == 0) {
@@ -365,31 +375,61 @@ void common_ngram_map_draft(common_ngram_map & map,
             break;
         }
     }
-    if (key_offset == map.keys.size()) {
-        // We create a new key-entry, it will get offset key_offset.
-        common_ngram_map_key new_key;
-        new_key.key_idx = match_pos;
-        new_key.stat_idx = 0;
-        new_key.key_num = 0;
+    const bool key_exists = key_offset < map.keys.size();
+    common_ngram_map_key curr_key;
+    if (key_exists) {
+        curr_key = map.keys[key_offset];
+    } else {
+        curr_key.key_idx = match_pos;
+        curr_key.stat_idx = 0;
+        curr_key.key_num = 0;
         for (int i = 0; i < COMMON_NGRAM_MAX_VALUES; ++i) {
-            new_key.values[i].value_num = 0;
-            new_key.values[i].n_accepted = m;
+            curr_key.values[i].value_num = 0;
+            curr_key.values[i].n_accepted = m;
         }
-        map.keys.push_back(new_key);
     }
 
-    // our key n-gram:
-    common_ngram_map_key & curr_key = map.keys[key_offset];
+    const auto commit_key = [&]() {
+        if (commit == nullptr) {
+            return;
+        }
+        if (key_exists) {
+            commit->keys[key_offset] = curr_key;
+        } else {
+            commit->keys.push_back(curr_key);
+        }
+    };
+    const auto commit_selection = [&](uint16_t value_idx) {
+        if (commit == nullptr) {
+            return;
+        }
+        commit->last_draft_created = true;
+        commit->last_draft_key_idx = key_offset;
+        commit->last_draft_value_idx = value_idx;
+    };
+    const auto set_result = [&](uint16_t value_idx) {
+        if (result == nullptr || !key_exists) {
+            return;
+        }
+        if (!map.key_only && map.keys[key_offset].values[value_idx].value_idx == 0) {
+            return;
+        }
+        result->valid = true;
+        result->key_idx = key_offset;
+        result->value_idx = value_idx;
+    };
 
     // update number of key hits
-    curr_key.key_num = (uint16_t) std::min((int) map.keys[key_offset].key_num + 1,
+    curr_key.key_num = (uint16_t) std::min((int) curr_key.key_num + 1,
             (int) COMMON_NGRAM_MAX_VALUE_COUNT);
 
     if (map.key_only) {
         // simple mode:
         // Fill in the draft with the m tokens following the key.
         // We work with value values[0] only.
-        int n_draft_tokens = std::min((int) m, (int) curr_key.values[0].n_accepted);
+        int n_draft_tokens = limit_by_acceptance
+            ? std::min((int) m, (int) curr_key.values[0].n_accepted)
+            : m;
 
         for (int i = 0; i < n_draft_tokens; ++i) {
             draft.push_back(inp[match_pos + n + i]);
@@ -398,9 +438,9 @@ void common_ngram_map_draft(common_ngram_map & map,
         LOG_DBG("%s: key_idx = %zu, key_offset = %zu, key_num = %d, draft.size = %zu\n", __func__,
                 curr_key.key_idx, key_offset, curr_key.key_num, draft.size());
 
-        map.last_draft_created   = true;
-        map.last_draft_key_idx   = key_offset;
-        map.last_draft_value_idx = 0; // value 0 is used for simple mode
+        commit_key();
+        commit_selection(0);
+        set_result(0);
         return;
     }
 
@@ -408,6 +448,7 @@ void common_ngram_map_draft(common_ngram_map & map,
         // not enough hits to consider this a good draft
         LOG_DBG("%s: key_offset = %zu, key_num = %d, min_hits = %d, no draft\n", __func__,
                 key_offset, curr_key.key_num, map.min_hits);
+        commit_key();
         return;
     }
 
@@ -501,12 +542,15 @@ void common_ngram_map_draft(common_ngram_map & map,
     if (sum_occur > 0 && max_occur < 2 * sum_occur) {
         // The most frequent value is not much more frequent than the other values.
         // We do not use the draft.
+        commit_key();
         return;
     }
 
     // We use the most frequent value values[slot_max] for the draft.
     // Fill in the draft with the m tokens following the key.
-    int n_draft_tokens = std::min((int) m, (int) curr_key.values[slot_max].n_accepted);
+    int n_draft_tokens = limit_by_acceptance
+        ? std::min((int) m, (int) curr_key.values[slot_max].n_accepted)
+        : m;
 
     const size_t value_pos = curr_key.values[slot_max].value_idx;
     for (int i = 0; i < n_draft_tokens; ++i) {
@@ -517,9 +561,26 @@ void common_ngram_map_draft(common_ngram_map & map,
             key_offset, slot_max,
             curr_key.key_num, draft.size());
 
-    map.last_draft_created   = true;
-    map.last_draft_key_idx   = key_offset;
-    map.last_draft_value_idx = slot_max; // value used for draft generation.
+    commit_key();
+    commit_selection(slot_max);
+    set_result(slot_max);
+}
+
+void common_ngram_map_draft(
+        common_ngram_map & map,
+        const llama_tokens & inp, llama_token sampled,
+        llama_tokens & draft,
+        bool limit_by_acceptance) {
+    common_ngram_map_draft_impl(map, &map, inp, sampled, draft, nullptr, limit_by_acceptance);
+}
+
+void common_ngram_map_draft_readonly(
+        const common_ngram_map & map,
+        const llama_tokens & inp, llama_token sampled,
+        llama_tokens & draft,
+        common_ngram_map_draft_result * result,
+        bool limit_by_acceptance) {
+    common_ngram_map_draft_impl(map, nullptr, inp, sampled, draft, result, limit_by_acceptance);
 }
 
 void common_ngram_map_accept(common_ngram_map & map, uint16_t n_accepted) {
@@ -540,4 +601,14 @@ void common_ngram_map_accept(common_ngram_map & map, uint16_t n_accepted) {
     LOG_DBG("common_ngram_map_send_accepted: n_accepted = %d, prev value_num = %d\n",
             n_accepted, curr_value.n_accepted);
     curr_value.n_accepted = n_accepted;
+}
+
+void common_ngram_map_accept(
+        common_ngram_map & map,
+        const common_ngram_map_draft_result & result,
+        uint16_t n_accepted) {
+    if (!result.valid || result.key_idx >= map.keys.size() || result.value_idx >= COMMON_NGRAM_MAX_VALUES) {
+        return;
+    }
+    map.keys[result.key_idx].values[result.value_idx].n_accepted = n_accepted;
 }

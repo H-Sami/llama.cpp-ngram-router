@@ -6,6 +6,7 @@
 #include "chat.h"
 #include "mtmd.h"
 #include "mtmd-helper.h"
+#include "speculative.h"
 
 #include "json.h"
 
@@ -478,6 +479,7 @@ struct server_metrics {
     uint64_t n_draft_accepted    = 0; // Draft tokens actually accepted
     uint64_t n_draft_verif_steps = 0; // Total draft token verification steps by the target model
     std::vector<uint64_t> n_accepted_per_pos; // Accepted tokens per draft position
+    common_speculative_controller_metrics spec_controller;
 
     void init() {
         t_start = ggml_time_us();

@@ -4263,6 +4263,13 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         }
     ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
     add_opt(common_arg(
+        {"--spec-controller-persistence"}, "{request,process}",
+        string_format("controller learning lifetime (default: %s)", common_speculative_controller_persistence_name(params.speculative.controller.persistence)),
+        [](common_params & params, const std::string & value) {
+            params.speculative.controller.persistence = common_speculative_controller_persistence_from_name(value);
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
         {"--spec-controller-margin"}, "N",
         string_format("minimum utility margin over ordinary decoding (default: %.2f)", params.speculative.controller.safety_margin),
         [](common_params & params, const std::string & value_string) {
@@ -4292,6 +4299,26 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
                 throw std::invalid_argument("speculative controller warmup must be between 0 and 1000000");
             }
             params.speculative.controller.warmup = value;
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
+        {"--spec-controller-max-verify"}, "N",
+        string_format("maximum tokens per controller verification (0 = automatic, default: %u)", params.speculative.controller.max_verify),
+        [](common_params & params, int value) {
+            if (value < 0 || value > 1024) {
+                throw std::invalid_argument("speculative controller max verification length must be between 0 and 1024");
+            }
+            params.speculative.controller.max_verify = value;
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
+        {"--spec-controller-global-max-verify"}, "N",
+        string_format("maximum draft tokens across one multi-slot verification batch (0 = unlimited, default: %u)", params.speculative.controller.global_max_verify),
+        [](common_params & params, int value) {
+            if (value < 0 || value > 65536) {
+                throw std::invalid_argument("speculative controller global verification budget must be between 0 and 65536");
+            }
+            params.speculative.controller.global_max_verify = value;
         }
     ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
     add_opt(common_arg(

@@ -95,6 +95,12 @@ struct common_ngram_map {
     uint32_t              key_map_last_idx = 0; // index of the last ngram added to key_map
 };
 
+struct common_ngram_map_draft_result {
+    bool valid = false;
+    size_t key_idx = 0;
+    uint16_t value_idx = 0;
+};
+
 // Initialize the n-gram map with the given token history.
 // map:                the ngram map to initialize.
 // tokens:             the token history to base the map on.
@@ -110,7 +116,19 @@ void common_ngram_map_begin(
 void common_ngram_map_draft(
     common_ngram_map & map,
     const llama_tokens & inp, llama_token sampled,
-    llama_tokens & draft);
+    llama_tokens & draft,
+    bool limit_by_acceptance = true);
+
+void common_ngram_map_draft_readonly(
+    const common_ngram_map & map,
+    const llama_tokens & inp, llama_token sampled,
+    llama_tokens & draft,
+    common_ngram_map_draft_result * result = nullptr,
+    bool limit_by_acceptance = true);
 
 // Update the statistics of a value after a draft was processed.
 void common_ngram_map_accept(common_ngram_map & map, uint16_t n_accepted);
+void common_ngram_map_accept(
+    common_ngram_map & map,
+    const common_ngram_map_draft_result & result,
+    uint16_t n_accepted);

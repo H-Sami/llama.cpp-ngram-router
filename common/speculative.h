@@ -6,6 +6,32 @@
 
 struct common_speculative;
 
+struct common_speculative_producer_metrics {
+    uint32_t producer_id = 0;
+    std::string configuration_name;
+    std::string type;
+    uint64_t proposals = 0;
+    uint64_t proposed_tokens = 0;
+    uint64_t selections = 0;
+    uint64_t selected_tokens = 0;
+    uint64_t observed_tokens = 0;
+    uint64_t accepted_tokens = 0;
+    uint64_t censored_selections = 0;
+};
+
+struct common_speculative_controller_metrics {
+    bool enabled = false;
+    uint64_t decisions = 0;
+    uint64_t mtp_selections = 0;
+    uint64_t ngram_selections = 0;
+    uint64_t fused_selections = 0;
+    uint64_t abstentions = 0;
+    uint64_t cooldown_decisions = 0;
+    uint64_t budget_limited_decisions = 0;
+    uint64_t budget_tokens_removed = 0;
+    std::vector<common_speculative_producer_metrics> producers;
+};
+
 // comma separated list the provided types
 std::string common_speculative_type_name_str(const std::vector<enum common_speculative_type> & types);
 
@@ -77,6 +103,9 @@ common_speculative_draft_params & common_speculative_get_draft_params(common_spe
 // optionally call once at the beginning of a new generation
 void common_speculative_begin(common_speculative * spec, llama_seq_id seq_id, const llama_tokens & prompt);
 
+// call when generation ends or is canceled
+void common_speculative_end(common_speculative * spec, llama_seq_id seq_id);
+
 // process the batch and update the internal state of the speculative context
 bool common_speculative_process(common_speculative * spec, const llama_batch & batch);
 
@@ -96,6 +125,9 @@ void common_speculative_add_verification_time(
         common_speculative * spec,
         llama_seq_id seq_id,
         int64_t verification_time_us);
+
+common_speculative_controller_metrics common_speculative_get_controller_metrics(
+        const common_speculative * spec);
 
 // (optional) get/set internal state
 bool common_speculative_get_state(common_speculative * spec, llama_seq_id seq_id, std::vector<uint8_t> & data);

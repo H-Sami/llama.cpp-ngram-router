@@ -374,11 +374,19 @@ enum common_speculative_controller_mode {
     COMMON_SPECULATIVE_CONTROLLER_MODE_REPLAY,
 };
 
+enum common_speculative_controller_persistence {
+    COMMON_SPECULATIVE_CONTROLLER_PERSISTENCE_REQUEST,
+    COMMON_SPECULATIVE_CONTROLLER_PERSISTENCE_PROCESS,
+};
+
 struct common_params_speculative_controller {
     common_speculative_controller_mode mode = COMMON_SPECULATIVE_CONTROLLER_MODE_OFF;
+    common_speculative_controller_persistence persistence = COMMON_SPECULATIVE_CONTROLLER_PERSISTENCE_PROCESS;
     float safety_margin = 0.05f;
     float decay = 0.98f;
     uint32_t warmup = 4;
+    uint32_t max_verify = 0;
+    uint32_t global_max_verify = 0;
     std::string trace_path;
     std::string replay_path;
 };

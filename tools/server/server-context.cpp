@@ -866,7 +866,9 @@ public:
     }
 
     server_metrics get_metrics() const {
-        return metrics;
+        auto result = metrics;
+        result.spec_controller = common_speculative_get_controller_metrics(spec.get());
+        return result;
     }
 
     void reset_metrics_bucket() {
@@ -1309,6 +1311,7 @@ private:
                 if (slot.stats.n_gen > 0) {
                     metrics_on_prediction(slot);
                 }
+                common_speculative_end(spec.get(), slot.id);
             };
 
             slot.reset();
@@ -2487,7 +2490,7 @@ private:
                     res->id                  = task.id;
                     res->n_processing_slots  = n_processing_slots;
                     res->n_tasks_deferred    = queue_tasks.queue_tasks_deferred_size();
-                    res->metrics             = metrics;
+                    res->metrics             = get_metrics();
 
                     if (task.metrics_reset_bucket) {
                         metrics.reset_bucket();
