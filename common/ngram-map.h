@@ -24,6 +24,7 @@
 struct common_ngram_simple_config {
     uint16_t   size_ngram;      // size of n-grams to lookup in self-mode
     uint16_t   size_mgram;      // size of m-grams to draft in self-mode
+    uint16_t   min_hits;        // minimum number of matching n-grams
 };
 
 // Searches for a n-gram in the history and checks whether a draft sequence should be generated.

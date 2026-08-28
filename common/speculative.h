@@ -2,6 +2,7 @@
 
 #include "llama.h"
 #include "common.h"
+#include "speculative-controller.h"
 
 struct common_speculative;
 
@@ -84,6 +85,17 @@ void common_speculative_draft(common_speculative * spec);
 
 // informs the speculative context that n_accepted tokens were accepted by the target model
 void common_speculative_accept(common_speculative * spec, llama_seq_id, uint16_t n_accepted);
+
+void common_speculative_accept(
+        common_speculative * spec,
+        llama_seq_id seq_id,
+        uint16_t n_accepted,
+        const llama_tokens & realized);
+
+void common_speculative_add_verification_time(
+        common_speculative * spec,
+        llama_seq_id seq_id,
+        int64_t verification_time_us);
 
 // (optional) get/set internal state
 bool common_speculative_get_state(common_speculative * spec, llama_seq_id seq_id, std::vector<uint8_t> & data);

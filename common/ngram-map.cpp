@@ -75,7 +75,8 @@ llama_tokens common_ngram_simple_draft(
     pattern.push_back(sampled); // add the last token to the pattern
 
     size_t match_pos = 0; // we ignore position 0, position 0 == no match
-                          // search backwards, but skip the current match (we are currently there)
+    uint16_t n_hits = 0;
+    // search backwards, but skip the current match (we are currently there)
     for (size_t j = cur_len - n_draft_min - 1; j > 0; --j) {
         bool match = true;
         for (size_t k = 0; k < pattern.size(); ++k) {
@@ -85,11 +86,16 @@ llama_tokens common_ngram_simple_draft(
             }
         }
         if (match) {
-            match_pos = j;
-            break;
+            if (match_pos == 0) {
+                match_pos = j;
+            }
+            n_hits++;
+            if (n_hits >= config.min_hits) {
+                break;
+            }
         }
     }
-    if (match_pos == 0) {
+    if (match_pos == 0 || n_hits < config.min_hits) {
         return draft_tokens;
     }
 
@@ -502,8 +508,9 @@ void common_ngram_map_draft(common_ngram_map & map,
     // Fill in the draft with the m tokens following the key.
     int n_draft_tokens = std::min((int) m, (int) curr_key.values[slot_max].n_accepted);
 
+    const size_t value_pos = curr_key.values[slot_max].value_idx;
     for (int i = 0; i < n_draft_tokens; ++i) {
-        draft.push_back(inp[match_pos + n + i]);
+        draft.push_back(inp[value_pos + i]);
     }
 
     LOG_DBG("%s: key_offset = %zu, slot_max = %d, key_num = %d, draft.size = %zu\n", __func__,

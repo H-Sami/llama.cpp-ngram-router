@@ -367,6 +367,22 @@ struct common_params_speculative_ngram_cache {
     std::string lookup_cache_dynamic; // path of dynamic ngram cache file for lookup decoding
 };
 
+enum common_speculative_controller_mode {
+    COMMON_SPECULATIVE_CONTROLLER_MODE_OFF,
+    COMMON_SPECULATIVE_CONTROLLER_MODE_SHADOW,
+    COMMON_SPECULATIVE_CONTROLLER_MODE_ADAPTIVE,
+    COMMON_SPECULATIVE_CONTROLLER_MODE_REPLAY,
+};
+
+struct common_params_speculative_controller {
+    common_speculative_controller_mode mode = COMMON_SPECULATIVE_CONTROLLER_MODE_OFF;
+    float safety_margin = 0.05f;
+    float decay = 0.98f;
+    uint32_t warmup = 4;
+    std::string trace_path;
+    std::string replay_path;
+};
+
 struct common_params_speculative {
     std::vector<enum common_speculative_type> types = { COMMON_SPECULATIVE_TYPE_NONE };
 
@@ -382,6 +398,8 @@ struct common_params_speculative {
     common_params_speculative_ngram_map ngram_map_k4v;
 
     common_params_speculative_ngram_cache ngram_cache;
+
+    common_params_speculative_controller controller;
 
     bool has_dft() const {
         return !draft.mparams.empty();

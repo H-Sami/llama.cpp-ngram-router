@@ -16,6 +16,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
+#include <fstream>
 #include <iomanip>
 #include <map>
 #include <cinttypes>
@@ -59,9 +60,15 @@ static std::string common_speculative_get_devices_str(const std::vector<ggml_bac
 struct common_speculative_config {
     common_speculative_type type;
     common_params_speculative params;
+    std::string name;
 
     common_speculative_config(common_speculative_type t,
-            const common_params_speculative & p = common_params_speculative{}) : type(t), params(p) {}
+            const common_params_speculative & p = common_params_speculative{},
+            std::string name = {})
+        : type(t)
+        , params(p)
+        , name(name.empty() ? common_speculative_type_to_str(t) : std::move(name)) {
+    }
 };
 
 static bool common_speculative_are_compatible(
@@ -138,6 +145,9 @@ using common_speculative_draft_params_vec = std::vector<common_speculative_draft
 struct common_speculative_impl {
     const common_speculative_type type;
 
+    uint32_t producer_id = 0;
+    std::string configuration_name;
+
     uint32_t n_seq;
     int32_t n_max; // maximum draft length after implementation-specific limits
 
@@ -168,6 +178,14 @@ struct common_speculative_impl {
     virtual bool process(const llama_batch & batch) = 0;
 
     virtual void draft(common_speculative_draft_params_vec & dparams) = 0;
+
+    virtual void draft_extension(
+            llama_seq_id /*seq_id*/,
+            const llama_tokens & /*prompt*/,
+            llama_token /*id_last*/,
+            int32_t /*n_max*/,
+            llama_tokens & /*result*/) {
+    }
 
     virtual void accept(llama_seq_id seq_id, uint16_t n_accepted, bool is_other) = 0;
 
@@ -1841,6 +1859,18 @@ struct common_speculative_impl_ngram_simple : public common_speculative_impl {
         }
     }
 
+    void draft_extension(
+            llama_seq_id /*seq_id*/,
+            const llama_tokens & prompt,
+            llama_token id_last,
+            int32_t n_max,
+            llama_tokens & result) override {
+        result = common_ngram_simple_draft(config, prompt, id_last);
+        if (n_max > 0 && (int) result.size() > n_max) {
+            result.resize(n_max);
+        }
+    }
+
     void accept(llama_seq_id /*seq_id*/, uint16_t /*n_accepted*/, bool /*is_other*/) override {
         // noop
     }
@@ -1886,6 +1916,19 @@ struct common_speculative_impl_ngram_map_k : public common_speculative_impl {
             }
 
             common_ngram_map_draft(config[seq_id], *dp.prompt, dp.id_last, *dp.result);
+        }
+    }
+
+    void draft_extension(
+            llama_seq_id seq_id,
+            const llama_tokens & prompt,
+            llama_token id_last,
+            int32_t n_max,
+            llama_tokens & result) override {
+        auto transaction = config[seq_id];
+        common_ngram_map_draft(transaction, prompt, id_last, result);
+        if (n_max > 0 && (int) result.size() > n_max) {
+            result.resize(n_max);
         }
     }
 
@@ -2044,6 +2087,38 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
             }
 
             draft_one(seq_id, dp);
+        }
+    }
+
+    void draft_extension(
+            llama_seq_id /*seq_id*/,
+            const llama_tokens & prompt,
+            llama_token id_last,
+            int32_t n_max,
+            llama_tokens & result) override {
+        const size_t n = mod.get_n();
+        if (prompt.size() < n) {
+            return;
+        }
+
+        const int32_t limit = std::max(0, std::min(params.n_max, n_max));
+        llama_tokens lookup(n + limit);
+        for (size_t i = 0; i < n - 1; ++i) {
+            lookup[i] = prompt[prompt.size() - n + 1 + i];
+        }
+        lookup[n - 1] = id_last;
+
+        for (int32_t i = 0; i < limit; ++i) {
+            const llama_token token = mod.get(lookup.data() + i);
+            if (token == common_ngram_mod::EMPTY) {
+                break;
+            }
+            lookup[n + i] = token;
+            result.push_back(token);
+        }
+
+        if ((int) result.size() < std::min(params.n_min, limit)) {
+            result.clear();
         }
     }
 
@@ -2224,6 +2299,18 @@ struct common_speculative {
     std::vector<common_speculative_impl *> impl_last;
 
     std::vector<double> synth_probs;
+
+    common_speculative_controller controller;
+
+    std::vector<std::vector<common_speculative_candidate>> candidates;
+    std::vector<uint64_t> selected_candidate_id;
+    std::vector<int64_t> verification_time_us;
+    std::vector<bool> ordinary_pending;
+
+    std::unique_ptr<std::ofstream> trace;
+    std::unique_ptr<std::ifstream> replay;
+
+    uint64_t next_candidate_id = 1;
 };
 
 static common_ngram_map get_common_ngram_map(
@@ -2368,6 +2455,12 @@ static uint32_t common_get_enabled_speculative_configs(const std::vector<common_
 
 int32_t common_speculative_n_max(const common_params_speculative * spec) {
     int32_t n_max = 0;
+    int32_t mtp_max = 0;
+    int32_t ngram_max = 0;
+    bool has_ngram_simple = false;
+    bool has_ngram_map_k = false;
+    bool has_ngram_map_k4v = false;
+    bool has_ngram_mod = false;
 
     for (const auto type : spec->types) {
         switch (type) {
@@ -2377,18 +2470,29 @@ int32_t common_speculative_n_max(const common_params_speculative * spec) {
             case COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH:
             case COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK:
                 n_max = std::max(n_max, std::max(0, spec->draft.n_max));
+                if (type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP) {
+                    mtp_max = std::max(0, spec->draft.n_max);
+                }
                 break;
             case COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE:
+                has_ngram_simple = true;
                 n_max = std::max(n_max, (int32_t) spec->ngram_simple.size_m);
+                ngram_max = std::max(ngram_max, (int32_t) spec->ngram_simple.size_m);
                 break;
             case COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K:
+                has_ngram_map_k = true;
                 n_max = std::max(n_max, (int32_t) spec->ngram_map_k.size_m);
+                ngram_max = std::max(ngram_max, (int32_t) spec->ngram_map_k.size_m);
                 break;
             case COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V:
+                has_ngram_map_k4v = true;
                 n_max = std::max(n_max, (int32_t) spec->ngram_map_k4v.size_m);
+                ngram_max = std::max(ngram_max, (int32_t) spec->ngram_map_k4v.size_m);
                 break;
             case COMMON_SPECULATIVE_TYPE_NGRAM_MOD:
+                has_ngram_mod = true;
                 n_max = std::max(n_max, std::max(0, spec->ngram_mod.n_max));
+                ngram_max = std::max(ngram_max, std::max(0, spec->ngram_mod.n_max));
                 break;
             case COMMON_SPECULATIVE_TYPE_NGRAM_CACHE:
                 n_max = std::max(n_max, (int32_t) 8);
@@ -2397,6 +2501,25 @@ int32_t common_speculative_n_max(const common_params_speculative * spec) {
             case COMMON_SPECULATIVE_TYPE_COUNT:
                 break;
         }
+    }
+
+    if (spec->controller.mode != COMMON_SPECULATIVE_CONTROLLER_MODE_OFF) {
+        if (has_ngram_simple) {
+            ngram_max = std::max(ngram_max, 32);
+        }
+        if (has_ngram_map_k) {
+            ngram_max = std::max(ngram_max, 32);
+        }
+        if (has_ngram_map_k4v) {
+            ngram_max = std::max(ngram_max, 48);
+        }
+        if (has_ngram_mod) {
+            ngram_max = std::max(ngram_max, 48);
+        }
+    }
+
+    if (spec->controller.mode != COMMON_SPECULATIVE_CONTROLLER_MODE_OFF && mtp_max > 0 && ngram_max > 0) {
+        n_max = std::max(n_max, mtp_max + ngram_max);
     }
 
     return n_max;
@@ -2667,6 +2790,52 @@ common_speculative * common_speculative_init(common_params_speculative & params,
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_MTP,    params.draft.ctx_dft != nullptr);
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH, params.draft.ctx_dft != nullptr);
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK, params.draft.ctx_dft != nullptr);
+
+        if (params.controller.mode != COMMON_SPECULATIVE_CONTROLLER_MODE_OFF) {
+            auto add_ngram_arm = [&](common_speculative_type type, common_params_speculative arm, const char * name) {
+                if (enabled_configs & (1u << type)) {
+                    configs.emplace_back(type, arm, name);
+                }
+            };
+
+            {
+                auto arm = params;
+                arm.ngram_mod.n_match = std::min(16, arm.ngram_mod.n_match);
+                arm.ngram_mod.n_min = std::min(16, arm.ngram_mod.n_min);
+                arm.ngram_mod.n_max = std::min(32, arm.ngram_mod.n_max);
+                add_ngram_arm(COMMON_SPECULATIVE_TYPE_NGRAM_MOD, arm, "mod-short");
+            }
+            {
+                auto arm = params;
+                arm.ngram_mod = { 24, 48, 32 };
+                add_ngram_arm(COMMON_SPECULATIVE_TYPE_NGRAM_MOD, arm, "mod-long");
+            }
+            {
+                auto arm = params;
+                arm.ngram_simple = { 8, 32, 1 };
+                add_ngram_arm(COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE, arm, "simple-fast");
+            }
+            {
+                auto arm = params;
+                arm.ngram_map_k = { 8, 16, 1 };
+                add_ngram_arm(COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K, arm, "map-k-fast");
+            }
+            {
+                auto arm = params;
+                arm.ngram_map_k = { 12, 32, 2 };
+                add_ngram_arm(COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K, arm, "map-k-strict");
+            }
+            {
+                auto arm = params;
+                arm.ngram_map_k4v = { 8, 24, 2 };
+                add_ngram_arm(COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V, arm, "k4v-short");
+            }
+            {
+                auto arm = params;
+                arm.ngram_map_k4v = { 12, 48, 2 };
+                add_ngram_arm(COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V, arm, "k4v-long");
+            }
+        }
     }
 
     std::vector<std::unique_ptr<common_speculative_impl>> impls = {};
@@ -2704,7 +2873,8 @@ common_speculative * common_speculative_init(common_params_speculative & params,
 
                 auto config_simple = common_ngram_simple_config {
                     /* .size_ngram = */ ngram_size_key,
-                    /* .size_mgram = */ mgram_size_value
+                    /* .size_mgram = */ mgram_size_value,
+                    /* .min_hits   = */ config.params.ngram_simple.min_hits,
                 };
                 auto state = std::make_unique<common_speculative_impl_ngram_simple>(
                     /* .params = */ config.params,
@@ -2749,11 +2919,49 @@ common_speculative * common_speculative_init(common_params_speculative & params,
         return nullptr;
     }
 
+    const bool controller_enabled = params.controller.mode != COMMON_SPECULATIVE_CONTROLLER_MODE_OFF;
+    const bool has_mtp = std::any_of(impls.begin(), impls.end(), [](const auto & impl) {
+        return impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP;
+    });
+    if (controller_enabled && !has_mtp) {
+        throw std::runtime_error("the speculative controller requires draft-mtp");
+    }
+    if (controller_enabled) {
+        for (const auto & impl : impls) {
+            if (impl->type == COMMON_SPECULATIVE_TYPE_NGRAM_CACHE) {
+                throw std::runtime_error("ngram-cache is not supported by the speculative controller until its slot reset behavior is fixed");
+            }
+            if (impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE ||
+                impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3 ||
+                impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH ||
+                impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK) {
+                throw std::runtime_error("the speculative controller supports draft-mtp and n-gram producers only");
+            }
+        }
+    }
+
+    for (uint32_t i = 0; i < impls.size(); ++i) {
+        impls[i]->producer_id = i + 1;
+        impls[i]->configuration_name = configs[i].name;
+        SPC_INF("controller producer=%u configuration='%s' type=%s\n",
+                impls[i]->producer_id,
+                impls[i]->configuration_name.c_str(),
+                common_speculative_type_to_str(impls[i]->type).c_str());
+    }
+
     common_speculative_ptr result(new common_speculative {
-        /* .dparams     = */ common_speculative_draft_params_vec(n_seq),
-        /* .impls       = */ std::move(impls),
-        /* .impl_last   = */ std::vector<common_speculative_impl *>(n_seq, nullptr),
-        /* .synth_probs = */ {},
+        /* .dparams               = */ common_speculative_draft_params_vec(n_seq),
+        /* .impls                 = */ std::move(impls),
+        /* .impl_last             = */ std::vector<common_speculative_impl *>(n_seq, nullptr),
+        /* .synth_probs           = */ {},
+        /* .controller            = */ common_speculative_controller(params.controller.mode, params.controller.safety_margin, params.controller.decay, params.controller.warmup),
+        /* .candidates            = */ std::vector<std::vector<common_speculative_candidate>>(n_seq),
+        /* .selected_candidate_id = */ std::vector<uint64_t>(n_seq, 0),
+        /* .verification_time_us  = */ std::vector<int64_t>(n_seq, 0),
+        /* .ordinary_pending      = */ std::vector<bool>(n_seq, false),
+        /* .trace                 = */ nullptr,
+        /* .replay                = */ nullptr,
+        /* .next_candidate_id     = */ 1,
     });
 
     const int32_t n_max_configured = common_speculative_n_max(&params);
@@ -2781,6 +2989,37 @@ common_speculative * common_speculative_init(common_params_speculative & params,
                 rates.size(), acceptance_length, string_join(rates_str, ", ").c_str());
     }
 
+    if (!params.controller.trace_path.empty()) {
+        result->trace = std::make_unique<std::ofstream>(params.controller.trace_path, std::ios::app);
+        if (!result->trace->good()) {
+            throw std::runtime_error("failed to open speculative controller trace: " + params.controller.trace_path);
+        }
+        auto & out = *result->trace;
+        out << "{\"event\":\"producers\",\"producers\":[";
+        for (size_t i = 0; i < result->impls.size(); ++i) {
+            if (i > 0) {
+                out << ',';
+            }
+            const auto & impl = result->impls[i];
+            out << "{\"producer_id\":" << impl->producer_id
+                << ",\"configuration_id\":" << impl->producer_id
+                << ",\"configuration_name\":\"" << impl->configuration_name
+                << "\",\"type\":\"" << common_speculative_type_to_str(impl->type)
+                << "\"}";
+        }
+        out << "]}\n";
+        out.flush();
+    }
+    if (params.controller.mode == COMMON_SPECULATIVE_CONTROLLER_MODE_REPLAY) {
+        if (params.controller.replay_path.empty()) {
+            throw std::runtime_error("replay mode requires --spec-controller-replay");
+        }
+        result->replay = std::make_unique<std::ifstream>(params.controller.replay_path);
+        if (!result->replay->good()) {
+            throw std::runtime_error("failed to open speculative controller replay: " + params.controller.replay_path);
+        }
+    }
+
     return result.release();
 }
 
@@ -2806,6 +3045,8 @@ void common_speculative_begin(common_speculative * spec, llama_seq_id seq_id, co
         return;
     }
 
+    spec->controller.begin_request();
+
     for (auto & impl : spec->impls) {
         common_time_meas tm(impl->t_begin_us, !impl->gen_perf);
         impl->begin(seq_id, prompt);
@@ -2827,28 +3068,8 @@ bool common_speculative_process(common_speculative * spec, const llama_batch & b
     return result;
 }
 
-void common_speculative_draft(common_speculative * spec) {
-    if (spec == nullptr) {
-        return;
-    }
-
+static void common_speculative_draft_fixed(common_speculative * spec) {
     auto & dparams = spec->dparams;
-
-    {
-        int n_drafting = 0;
-
-        for (auto & dp : dparams) {
-            GGML_ASSERT(!dp.drafting || dp.result->empty());
-
-            if (dp.drafting) {
-                n_drafting++;
-            }
-        }
-
-        if (n_drafting == 0) {
-            return;
-        }
-    }
 
     for (auto & impl : spec->impls) {
         {
@@ -2867,26 +3088,20 @@ void common_speculative_draft(common_speculative * spec) {
             }
 
             auto & result = *dp.result;
-
-            // a new draft has been sampled
-            if (dp.drafting && !result.empty()) {
+            if (!result.empty()) {
                 dp.drafting = false;
 
-                if (dp.n_max > 0) {
-                    if (!result.empty() && (int) result.size() > dp.n_max) {
-                        SPC_DBG("truncating draft to %d tokens\n", dp.n_max);
-                        result.resize(dp.n_max);
-                    }
+                if (dp.n_max > 0 && (int) result.size() > dp.n_max) {
+                    SPC_DBG("truncating draft to %d tokens\n", dp.n_max);
+                    result.resize(dp.n_max);
                 }
 
                 if (!result.empty()) {
                     SPC_DBG("called impl %s, hist size = %zu, call_count = %zu, gen = %zu\n",
-                            common_speculative_type_to_str(impl.get()->type).c_str(), dp.prompt->size(),
-                            impl.get()->n_call_draft, result.size());
+                            common_speculative_type_to_str(impl->type).c_str(), dp.prompt->size(),
+                            impl->n_call_draft, result.size());
 
-                    // remember which implementation was used
                     spec->impl_last[seq_id] = impl.get();
-
                     impl->n_gen_drafts++;
                     impl->n_gen_tokens += result.size();
                 }
@@ -2901,51 +3116,455 @@ void common_speculative_draft(common_speculative * spec) {
             break;
         }
     }
-
-    // these sequences failed to generate a draft
-    for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
-        auto & dp = dparams[seq_id];
-
-        if (dp.drafting) {
-            dp.drafting = false;
-        }
-    }
 }
 
-void common_speculative_accept(common_speculative * spec, llama_seq_id seq_id, uint16_t n_accepted) {
-    common_speculative_impl * impl = spec->impl_last[seq_id];
+static uint16_t common_prefix_length(const llama_tokens & a, const llama_tokens & b) {
+    const size_t n = std::min(a.size(), b.size());
+    size_t i = 0;
+    while (i < n && a[i] == b[i]) {
+        i++;
+    }
+    return i;
+}
 
-    if (impl == nullptr) {
-        GGML_ASSERT(n_accepted == 0);
+static void common_speculative_trace_decision(
+        common_speculative * spec,
+        llama_seq_id seq_id,
+        const std::vector<common_speculative_candidate> & candidates,
+        const common_speculative_selection & selection) {
+    if (!spec->trace) {
         return;
     }
 
-    {
-        common_time_meas tm(impl->t_accept_us, !impl->gen_perf);
-
-        if (impl->n_acc_tokens_per_pos.size() < n_accepted) {
-            impl->n_acc_tokens_per_pos.resize(n_accepted, 0);
+    auto & out = *spec->trace;
+    out << "{\"event\":\"decision\",\"seq_id\":" << seq_id
+        << ",\"selected_index\":" << selection.candidate_index
+        << ",\"prefix_length\":" << selection.prefix_length
+        << ",\"utility\":" << std::setprecision(12) << selection.utility
+        << ",\"candidates\":[";
+    for (size_t i = 0; i < candidates.size(); ++i) {
+        if (i > 0) {
+            out << ',';
         }
-
-        for (size_t i = 0; i < n_accepted; ++i) {
-            impl->n_acc_tokens_per_pos[i]++;
+        const auto & candidate = candidates[i];
+        out << "{\"candidate_id\":" << candidate.candidate_id
+            << ",\"producer_id\":" << candidate.producer_id
+            << ",\"configuration_id\":" << candidate.configuration_id
+            << ",\"type\":\"" << common_speculative_type_to_str(candidate.type)
+            << "\",\"proposal_time_us\":" << candidate.metadata.proposal_time_us
+            << ",\"cycle_proposal_time_us\":" << candidate.metadata.cycle_proposal_time_us
+            << ",\"context_length\":" << candidate.metadata.context_length
+            << ",\"provenance\":[";
+        for (size_t j = 0; j < candidate.provenance.size(); ++j) {
+            if (j > 0) {
+                out << ',';
+            }
+            const auto & span = candidate.provenance[j];
+            out << "{\"producer_id\":" << span.producer_id
+                << ",\"configuration_id\":" << span.configuration_id
+                << ",\"begin\":" << span.begin
+                << ",\"end\":" << span.end << '}';
         }
-
-        if (n_accepted > 0) {
-            impl->n_acc_drafts++;
-            impl->n_acc_tokens += n_accepted;
+        out << "],\"tokens\":[";
+        for (size_t j = 0; j < candidate.tokens.size(); ++j) {
+            if (j > 0) {
+                out << ',';
+            }
+            out << candidate.tokens[j];
         }
+        out << "]}";
+    }
+    out << "]}\n";
+    out.flush();
+}
 
-        impl->accept(seq_id, n_accepted, false);
-        impl->n_call_accept++;
+static void common_speculative_draft_controlled(common_speculative * spec) {
+    auto & dparams = spec->dparams;
+    const bool allow_challengers = spec->controller.allow_challengers();
+
+    std::vector<bool> requested(dparams.size(), false);
+    std::vector<int64_t> cycle_proposal_time_us(dparams.size(), 0);
+    for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
+        requested[seq_id] = dparams[seq_id].drafting;
+        spec->impl_last[seq_id] = nullptr;
+        spec->selected_candidate_id[seq_id] = 0;
+        spec->verification_time_us[seq_id] = 0;
+        spec->ordinary_pending[seq_id] = false;
+        spec->candidates[seq_id].clear();
     }
 
-    // accept with the rest of the implementations, using is_other == true
-    for (auto & impl_other : spec->impls) {
-        if (impl_other.get() != impl) {
-            impl_other->accept(seq_id, n_accepted, true);
+    for (auto & impl : spec->impls) {
+        if (!allow_challengers && impl->type != COMMON_SPECULATIVE_TYPE_DRAFT_MTP) {
+            continue;
+        }
+        auto local_params = dparams;
+        std::vector<llama_tokens> results(dparams.size());
+
+        for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) local_params.size(); ++seq_id) {
+            local_params[seq_id].drafting = requested[seq_id];
+            local_params[seq_id].result = &results[seq_id];
+        }
+
+        const int64_t t_start_us = ggml_time_us();
+        impl->draft(local_params);
+        const int64_t proposal_time_us = ggml_time_us() - t_start_us;
+        impl->t_draft_us += proposal_time_us;
+        impl->n_call_draft++;
+
+        for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
+            if (requested[seq_id]) {
+                cycle_proposal_time_us[seq_id] += proposal_time_us;
+            }
+        }
+
+        for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
+            if (!requested[seq_id] || results[seq_id].empty()) {
+                continue;
+            }
+
+            auto & tokens = results[seq_id];
+            const int32_t n_max = dparams[seq_id].n_max;
+            if (n_max > 0 && (int) tokens.size() > n_max) {
+                tokens.resize(n_max);
+            }
+
+            common_speculative_candidate candidate;
+            candidate.candidate_id = spec->next_candidate_id++;
+            candidate.producer_id = impl->producer_id;
+            candidate.configuration_id = impl->producer_id;
+            candidate.type = impl->type;
+            candidate.tokens = std::move(tokens);
+            candidate.metadata.proposal_time_us = proposal_time_us;
+            candidate.metadata.context_length = dparams[seq_id].prompt->size();
+            candidate.provenance.push_back({
+                /* .producer_id      = */ impl->producer_id,
+                /* .configuration_id = */ impl->producer_id,
+                /* .begin            = */ 0,
+                /* .end              = */ (uint16_t) candidate.tokens.size(),
+            });
+            spec->candidates[seq_id].push_back(std::move(candidate));
         }
     }
+
+    for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
+        std::vector<common_speculative_candidate> mtp_candidates;
+        for (const auto & candidate : spec->candidates[seq_id]) {
+            if (candidate.type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP) {
+                mtp_candidates.push_back(candidate);
+            }
+        }
+
+        for (const auto & mtp : mtp_candidates) {
+            if (!allow_challengers) {
+                break;
+            }
+            const int32_t n_max = dparams[seq_id].n_max;
+            const int32_t remaining = n_max > 0 ? n_max - (int32_t) mtp.tokens.size() : 0;
+            if (mtp.tokens.empty() || remaining <= 0) {
+                continue;
+            }
+
+            llama_tokens hypothetical = *dparams[seq_id].prompt;
+            hypothetical.push_back(dparams[seq_id].id_last);
+            hypothetical.insert(hypothetical.end(), mtp.tokens.begin(), mtp.tokens.end() - 1);
+
+            for (auto & impl : spec->impls) {
+                if (impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE &&
+                    impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K &&
+                    impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V &&
+                    impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_MOD) {
+                    continue;
+                }
+
+                llama_tokens extension;
+                const int64_t t_start_us = ggml_time_us();
+                impl->draft_extension(seq_id, hypothetical, mtp.tokens.back(), remaining, extension);
+                const int64_t proposal_time_us = ggml_time_us() - t_start_us;
+                cycle_proposal_time_us[seq_id] += proposal_time_us;
+
+                if (extension.empty()) {
+                    continue;
+                }
+
+                common_speculative_candidate fused;
+                fused.candidate_id = spec->next_candidate_id++;
+                fused.producer_id = 0x80000000u | (mtp.producer_id << 16) | impl->producer_id;
+                fused.configuration_id = fused.producer_id;
+                fused.type = impl->type;
+                fused.tokens = mtp.tokens;
+                fused.tokens.insert(fused.tokens.end(), extension.begin(), extension.end());
+                fused.metadata.proposal_time_us = mtp.metadata.proposal_time_us + proposal_time_us;
+                fused.metadata.context_length = dparams[seq_id].prompt->size();
+                fused.provenance.push_back({
+                    /* .producer_id      = */ mtp.producer_id,
+                    /* .configuration_id = */ mtp.configuration_id,
+                    /* .begin            = */ 0,
+                    /* .end              = */ (uint16_t) mtp.tokens.size(),
+                });
+                fused.provenance.push_back({
+                    /* .producer_id      = */ impl->producer_id,
+                    /* .configuration_id = */ impl->producer_id,
+                    /* .begin            = */ (uint16_t) mtp.tokens.size(),
+                    /* .end              = */ (uint16_t) fused.tokens.size(),
+                });
+                spec->candidates[seq_id].push_back(std::move(fused));
+            }
+        }
+    }
+
+    for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
+        auto & candidates = spec->candidates[seq_id];
+        for (auto & candidate : candidates) {
+            candidate.metadata.cycle_proposal_time_us = cycle_proposal_time_us[seq_id];
+        }
+        for (size_t i = 0; i < candidates.size(); ++i) {
+            candidates[i].metadata.agreement_prefix.reserve(candidates.size());
+            for (size_t j = 0; j < candidates.size(); ++j) {
+                candidates[i].metadata.agreement_prefix.push_back(i == j ? 0 : common_prefix_length(candidates[i].tokens, candidates[j].tokens));
+            }
+        }
+
+        auto selection = spec->controller.select(candidates);
+        if (spec->controller.mode() == COMMON_SPECULATIVE_CONTROLLER_MODE_REPLAY) {
+            uint32_t producer_id = 0;
+            uint16_t prefix_length = 0;
+            if (!(*spec->replay >> producer_id >> prefix_length)) {
+                throw std::runtime_error("speculative controller replay ended before generation");
+            }
+
+            selection = {};
+            for (size_t i = 0; i < candidates.size(); ++i) {
+                if (candidates[i].producer_id == producer_id) {
+                    selection.candidate_index = i;
+                    selection.prefix_length = std::min<size_t>(prefix_length, candidates[i].tokens.size());
+                    break;
+                }
+            }
+            if (producer_id != 0 && selection.candidate_index < 0) {
+                throw std::runtime_error("speculative controller replay producer is unavailable: " + std::to_string(producer_id));
+            }
+        }
+
+        common_speculative_trace_decision(spec, seq_id, candidates, selection);
+        if (selection.candidate_index >= 0) {
+            auto & candidate = candidates[selection.candidate_index];
+            candidate.tokens.resize(std::min<size_t>(selection.prefix_length, candidate.tokens.size()));
+            candidate.provenance.erase(
+                    std::remove_if(candidate.provenance.begin(), candidate.provenance.end(), [&](const auto & span) {
+                        return span.begin >= candidate.tokens.size();
+                    }),
+                    candidate.provenance.end());
+            for (auto & span : candidate.provenance) {
+                span.end = std::min<size_t>(span.end, candidate.tokens.size());
+            }
+            *dparams[seq_id].result = candidate.tokens;
+            spec->selected_candidate_id[seq_id] = candidate.candidate_id;
+
+            for (const auto & span : candidate.provenance) {
+                for (auto & impl : spec->impls) {
+                    if (impl->producer_id == span.producer_id) {
+                        if (spec->impl_last[seq_id] == nullptr) {
+                            spec->impl_last[seq_id] = impl.get();
+                        }
+                        impl->n_gen_drafts++;
+                        impl->n_gen_tokens += span.end - span.begin;
+                        break;
+                    }
+                }
+            }
+
+            SPC_DBG("controller selected %s, candidate=%" PRIu64 ", prefix=%zu, utility=%.6f\n",
+                    common_speculative_type_to_str(candidate.type).c_str(), candidate.candidate_id,
+                    candidate.tokens.size(), selection.utility);
+        } else {
+            spec->ordinary_pending[seq_id] = true;
+        }
+
+        dparams[seq_id].drafting = false;
+    }
+}
+
+void common_speculative_draft(common_speculative * spec) {
+    if (spec == nullptr) {
+        return;
+    }
+
+    int n_drafting = 0;
+    for (auto & dp : spec->dparams) {
+        GGML_ASSERT(!dp.drafting || dp.result->empty());
+        n_drafting += dp.drafting;
+    }
+    if (n_drafting == 0) {
+        return;
+    }
+
+    if (spec->controller.mode() == COMMON_SPECULATIVE_CONTROLLER_MODE_OFF) {
+        common_speculative_draft_fixed(spec);
+    } else {
+        common_speculative_draft_controlled(spec);
+    }
+
+    for (auto & dp : spec->dparams) {
+        dp.drafting = false;
+    }
+}
+
+static void common_speculative_accept_impl(
+        common_speculative * spec,
+        llama_seq_id seq_id,
+        uint16_t n_accepted,
+        const llama_tokens & realized) {
+    GGML_ASSERT(spec != nullptr);
+    GGML_ASSERT(seq_id >= 0 && seq_id < (llama_seq_id) spec->impl_last.size());
+
+    auto update_stats = [&](common_speculative_impl & impl, uint16_t accepted) {
+        if (impl.n_acc_tokens_per_pos.size() < accepted) {
+            impl.n_acc_tokens_per_pos.resize(accepted, 0);
+        }
+
+        for (size_t i = 0; i < accepted; ++i) {
+            impl.n_acc_tokens_per_pos[i]++;
+        }
+
+        if (accepted > 0) {
+            impl.n_acc_drafts++;
+            impl.n_acc_tokens += accepted;
+        }
+    };
+
+    if (spec->controller.mode() == COMMON_SPECULATIVE_CONTROLLER_MODE_OFF) {
+        common_speculative_impl * impl = spec->impl_last[seq_id];
+        if (impl == nullptr) {
+            GGML_ASSERT(n_accepted == 0);
+            return;
+        }
+
+        {
+            common_time_meas tm(impl->t_accept_us, !impl->gen_perf);
+            update_stats(*impl, n_accepted);
+            impl->accept(seq_id, n_accepted, false);
+            impl->n_call_accept++;
+        }
+
+        for (auto & impl_other : spec->impls) {
+            if (impl_other.get() != impl) {
+                impl_other->accept(seq_id, n_accepted, true);
+            }
+        }
+        return;
+    }
+
+    const common_speculative_candidate * selected = nullptr;
+    for (const auto & candidate : spec->candidates[seq_id]) {
+        if (candidate.candidate_id == spec->selected_candidate_id[seq_id]) {
+            selected = &candidate;
+            break;
+        }
+    }
+    GGML_ASSERT(selected != nullptr);
+
+    std::vector<bool> contributed(spec->impls.size(), false);
+    for (const auto & span : selected->provenance) {
+        for (size_t i = 0; i < spec->impls.size(); ++i) {
+            auto & impl = spec->impls[i];
+            if (impl->producer_id != span.producer_id) {
+                continue;
+            }
+
+            const uint16_t accepted = n_accepted > span.begin
+                ? std::min<uint16_t>(n_accepted, span.end) - span.begin
+                : 0;
+            const bool fused_extension = selected->provenance.size() > 1 && impl->type != COMMON_SPECULATIVE_TYPE_DRAFT_MTP;
+            const uint16_t state_accepted = impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP ? n_accepted : accepted;
+
+            {
+                common_time_meas tm(impl->t_accept_us, !impl->gen_perf);
+                update_stats(*impl, accepted);
+                impl->accept(seq_id, state_accepted, fused_extension);
+                impl->n_call_accept++;
+            }
+            contributed[i] = true;
+            break;
+        }
+    }
+
+    for (size_t i = 0; i < spec->impls.size(); ++i) {
+        if (!contributed[i]) {
+            spec->impls[i]->accept(seq_id, n_accepted, true);
+        }
+    }
+
+    spec->controller.observe(
+            spec->candidates[seq_id],
+            spec->selected_candidate_id[seq_id],
+            realized,
+            spec->verification_time_us[seq_id],
+            0);
+
+    if (spec->trace) {
+        auto & out = *spec->trace;
+        out << "{\"event\":\"feedback\",\"seq_id\":" << seq_id
+            << ",\"candidate_id\":" << spec->selected_candidate_id[seq_id]
+            << ",\"accepted_length\":" << n_accepted
+            << ",\"verification_time_us\":" << spec->verification_time_us[seq_id]
+            << ",\"realized\":[";
+        for (size_t i = 0; i < realized.size(); ++i) {
+            if (i > 0) {
+                out << ',';
+            }
+            out << realized[i];
+        }
+        out << "]}\n";
+        out.flush();
+    }
+    spec->candidates[seq_id].clear();
+    spec->selected_candidate_id[seq_id] = 0;
+    spec->verification_time_us[seq_id] = 0;
+}
+
+void common_speculative_accept(common_speculative * spec, llama_seq_id seq_id, uint16_t n_accepted) {
+    llama_tokens realized;
+    if (spec != nullptr && seq_id >= 0 && seq_id < (llama_seq_id) spec->candidates.size()) {
+        for (const auto & candidate : spec->candidates[seq_id]) {
+            if (candidate.candidate_id == spec->selected_candidate_id[seq_id]) {
+                const size_t n = std::min<size_t>(n_accepted, candidate.tokens.size());
+                realized.assign(candidate.tokens.begin(), candidate.tokens.begin() + n);
+                break;
+            }
+        }
+    }
+    common_speculative_accept_impl(spec, seq_id, n_accepted, realized);
+}
+
+void common_speculative_accept(
+        common_speculative * spec,
+        llama_seq_id seq_id,
+        uint16_t n_accepted,
+        const llama_tokens & realized) {
+    common_speculative_accept_impl(spec, seq_id, n_accepted, realized);
+}
+
+void common_speculative_add_verification_time(
+        common_speculative * spec,
+        llama_seq_id seq_id,
+        int64_t verification_time_us) {
+    if (spec == nullptr || seq_id < 0 || seq_id >= (llama_seq_id) spec->verification_time_us.size()) {
+        return;
+    }
+    if (spec->selected_candidate_id[seq_id] == 0) {
+        if (spec->ordinary_pending[seq_id]) {
+            spec->controller.observe_ordinary(verification_time_us);
+            spec->ordinary_pending[seq_id] = false;
+            if (spec->trace) {
+                *spec->trace << "{\"event\":\"feedback\",\"seq_id\":" << seq_id
+                             << ",\"candidate_id\":0,\"accepted_length\":0,\"verification_time_us\":" << verification_time_us
+                             << ",\"realized\":[]}\n";
+                spec->trace->flush();
+            }
+        }
+        return;
+    }
+    spec->verification_time_us[seq_id] += verification_time_us;
 }
 
 // TODO: support the case of more than one speculative implementations having a state

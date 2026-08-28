@@ -22,6 +22,7 @@
 #include <cinttypes>
 #include <exception>
 #include <memory>
+#include <map>
 #include <filesystem>
 #include <random>
 #include <utility>
@@ -3651,12 +3652,14 @@ private:
         // yield to the queue, so we can still handle metrics tasks while decoding
         // note: the sync is done here too, so that the wait is also covered by the yield
         int ret = 0;
+        const int64_t t_decode_start_us = ggml_time_us();
         queue_tasks.yield_to_queue([&]() {
             ret = llama_decode(ctx_tgt, batch_view);
             if (ret == 0 && has_output) {
                 llama_synchronize(ctx_tgt);
             }
         });
+        const int64_t t_decode_us = ggml_time_us() - t_decode_start_us;
 
         if (ret != 0) {
             {
@@ -3709,6 +3712,24 @@ private:
         } else {
             // success, apply batch metrics
             metrics_post_decode(off, batch_view.n_tokens, has_output);
+
+            if (spec && has_output) {
+                std::map<llama_seq_id, int32_t> tokens_per_seq;
+                int32_t sequence_tokens = 0;
+                for (int32_t i = 0; i < batch_view.n_tokens; ++i) {
+                    for (int32_t j = 0; j < batch_view.n_seq_id[i]; ++j) {
+                        tokens_per_seq[batch_view.seq_id[i][j]]++;
+                        sequence_tokens++;
+                    }
+                }
+
+                for (const auto & item : tokens_per_seq) {
+                    const int64_t attributed_us = sequence_tokens > 0
+                        ? t_decode_us * item.second / sequence_tokens
+                        : 0;
+                    common_speculative_add_verification_time(spec.get(), item.first, attributed_us);
+                }
+            }
         }
 
         // TODO: avoid restoring the draft context and re-evaluating the drafted tokens when not needed [TAG_SPEC_AVOID_DRAFT_REEVAL]
@@ -3934,7 +3955,7 @@ private:
                     SLT_INF(slot, "accepted %2zu/%2zu draft tokens\n", accepted.size() - 1, n_draft);
                 }
 
-                common_speculative_accept(spec.get(), slot.id, accepted.size() - 1);
+                common_speculative_accept(spec.get(), slot.id, accepted.size() - 1, accepted);
 
                 slot.spec_draft = std::move(accepted);
             }

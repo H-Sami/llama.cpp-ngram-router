@@ -4256,6 +4256,60 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         }
     ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}).set_env("LLAMA_ARG_SPEC_TYPE"));
     add_opt(common_arg(
+        {"--spec-controller"}, "{off,shadow,adaptive,replay}",
+        string_format("speculative controller mode (default: %s)", common_speculative_controller_mode_name(params.speculative.controller.mode)),
+        [](common_params & params, const std::string & value) {
+            params.speculative.controller.mode = common_speculative_controller_mode_from_name(value);
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
+        {"--spec-controller-margin"}, "N",
+        string_format("minimum utility margin over ordinary decoding (default: %.2f)", params.speculative.controller.safety_margin),
+        [](common_params & params, const std::string & value_string) {
+            const float value = std::stof(value_string);
+            if (value < 0.0f || value > 10.0f) {
+                throw std::invalid_argument("speculative controller margin must be between 0 and 10");
+            }
+            params.speculative.controller.safety_margin = value;
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
+        {"--spec-controller-decay"}, "N",
+        string_format("controller history decay in [0, 1] (default: %.2f)", params.speculative.controller.decay),
+        [](common_params & params, const std::string & value_string) {
+            const float value = std::stof(value_string);
+            if (value < 0.0f || value > 1.0f) {
+                throw std::invalid_argument("speculative controller decay must be between 0 and 1");
+            }
+            params.speculative.controller.decay = value;
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
+        {"--spec-controller-warmup"}, "N",
+        string_format("fixed-policy learning cycles before adaptation (default: %u)", params.speculative.controller.warmup),
+        [](common_params & params, int value) {
+            if (value < 0 || value > 1000000) {
+                throw std::invalid_argument("speculative controller warmup must be between 0 and 1000000");
+            }
+            params.speculative.controller.warmup = value;
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
+        {"--spec-controller-trace"}, "FNAME",
+        "write controller candidates, decisions, and feedback as JSON Lines",
+        [](common_params & params, const std::string & value) {
+            params.speculative.controller.trace_path = value;
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
+        {"--spec-controller-replay"}, "FNAME",
+        "replay producer and prefix decisions from a two-column text file",
+        [](common_params & params, const std::string & value) {
+            params.speculative.controller.replay_path = value;
+            params.speculative.controller.mode = COMMON_SPECULATIVE_CONTROLLER_MODE_REPLAY;
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
         {"--spec-ngram-mod-n-min"}, "N",
         string_format("minimum number of ngram tokens to use for ngram-based speculative decoding (default: %d)", params.speculative.ngram_mod.n_min),
         [](common_params & params, int value) {

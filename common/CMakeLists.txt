@@ -100,6 +100,8 @@ add_library(${TARGET}
     reasoning-budget.h
     sampling.cpp
     sampling.h
+    speculative-controller.cpp
+    speculative-controller.h
     speculative.cpp
     speculative.h
     subproc.cpp
