@@ -10,6 +10,10 @@ MTP is useful across most text, while n-gram drafting can be much faster when th
 
 The router lets several methods propose drafts, measures how they behave, and chooses the draft and length that are most likely to save time for the current context.
 
+The n-gram methods do not merge into one larger n-gram algorithm, and they do not vote on the next token. Each method searches for reusable text in its own way and submits a candidate. The router compares those candidates and selects one producer, or one useful prefix, for target-model verification. It can also join an MTP prefix to an n-gram continuation when that combination looks stronger than either draft by itself.
+
+This gives the system more chances to find a useful match. One method may work well for an exact repeated block, while another may handle several possible continuations better. They are competing options under one controller, and methods that are not useful for the current text are simply ignored.
+
 ## How it works
 
 For each decoding cycle:
