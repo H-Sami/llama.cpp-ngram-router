@@ -3892,6 +3892,8 @@ private:
                 return;
             }
 
+            common_speculative_observe_output_token(spec.get(), slot.id, result.tok);
+
             slot.print_timings_tg();
         });
 
@@ -4016,6 +4018,9 @@ private:
 
                     return;
                 }
+
+
+                common_speculative_observe_output_token(spec.get(), slot.id, result.tok);
             }
 
             slot.print_timings_tg();

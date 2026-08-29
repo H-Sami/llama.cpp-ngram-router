@@ -1615,6 +1615,17 @@ std::string server_task_result_metrics::to_metrics() {
             { "spec_controller_budget_tokens_removed_total", "Controller: Draft suffix tokens removed by the global verification budget", (double) controller.budget_tokens_removed },
             { "spec_controller_namespace_evictions_total", "Controller: Inactive process-learning namespaces evicted", (double) controller.namespace_evictions },
             { "spec_controller_namespace_fallbacks_total", "Controller: Requests using local learning because all resident namespaces were active", (double) controller.namespace_fallbacks },
+            { "spec_controller_shadow_started_total", "Controller: Shadow probes started", (double) controller.shadow.started },
+            { "spec_controller_shadow_succeeded_8_total", "Controller: Shadow probes that matched 8 tokens", (double) controller.shadow.succeeded_8 },
+            { "spec_controller_shadow_succeeded_16_total", "Controller: Shadow probes that matched 16 tokens", (double) controller.shadow.succeeded_16 },
+            { "spec_controller_shadow_failed_total", "Controller: Shadow probes that mismatched", (double) controller.shadow.failed },
+            { "spec_controller_shadow_censored_total", "Controller: Unresolved shadow probes cleared at request end", (double) controller.shadow.censored },
+            { "spec_controller_shadow_dropped_total", "Controller: Shadow probes dropped by the capacity limit", (double) controller.shadow.dropped },
+            { "spec_controller_blocked_decisions_total", "Controller: Decisions that kept unproven n-grams shadow-only", (double) controller.shadow.blocked_decisions },
+            { "spec_controller_provisional_decisions_total", "Controller: Decisions that selected an 8-token provisional n-gram", (double) controller.shadow.provisional_decisions },
+            { "spec_controller_trusted_decisions_total", "Controller: Decisions that selected a trusted n-gram", (double) controller.shadow.trusted_decisions },
+            { "spec_controller_admission_no_evidence_total", "Controller: N-gram admissions rejected for insufficient evidence", (double) controller.shadow.rejected_no_evidence },
+            { "spec_controller_admission_confidence_total", "Controller: N-gram admissions rejected by confidence bounds", (double) controller.shadow.rejected_confidence },
         };
         add_items("counter", controller_counters);
         add_items("gauge", {
@@ -1654,6 +1665,13 @@ std::string server_task_result_metrics::to_metrics() {
         add_producer_counter("spec_controller_producer_observed_tokens_total", "Controller: Selected span tokens with observable target feedback", [](const auto & p) { return p.observed_tokens; });
         add_producer_counter("spec_controller_producer_accepted_tokens_total", "Controller: Target-accepted selected span tokens by producer", [](const auto & p) { return p.accepted_tokens; });
         add_producer_counter("spec_controller_producer_censored_selections_total", "Controller: Selected spans not reached by target verification", [](const auto & p) { return p.censored_selections; });
+        add_producer_counter("spec_controller_producer_begin_calls_total", "Controller: Producer request initialization calls", [](const auto & p) { return p.begin_calls; });
+        add_producer_counter("spec_controller_producer_draft_calls_total", "Controller: Producer draft calls", [](const auto & p) { return p.draft_calls; });
+        add_producer_counter("spec_controller_producer_empty_calls_total", "Controller: Producer draft calls with no candidate", [](const auto & p) { return p.empty_calls; });
+        add_producer_counter("spec_controller_producer_extension_calls_total", "Controller: Producer extension calls", [](const auto & p) { return p.extension_calls; });
+        add_producer_counter("spec_controller_producer_begin_time_us_total", "Controller: Producer request initialization time in microseconds", [](const auto & p) { return p.begin_time_us; });
+        add_producer_counter("spec_controller_producer_draft_time_us_total", "Controller: Producer draft time in microseconds", [](const auto & p) { return p.draft_time_us; });
+        add_producer_counter("spec_controller_producer_extension_time_us_total", "Controller: Producer extension time in microseconds", [](const auto & p) { return p.extension_time_us; });
     }
 
     // labeled counter: one time series per draft position

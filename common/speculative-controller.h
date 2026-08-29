@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <map>
 #include <set>
+#include <string>
 #include <vector>
 
 const char * common_speculative_controller_mode_name(common_speculative_controller_mode mode);
@@ -68,11 +69,42 @@ struct common_speculative_selection {
     double admission_upper_confidence = 1.0;
     double admission_evidence = 0.0;
     bool admission_bootstrap = false;
+    uint8_t admission_level = 0;
     uint64_t challenger_cooldown_remaining = 0;
     uint8_t challenger_failure_streak = 0;
     uint16_t unbudgeted_prefix_length = 0;
     bool budget_limited = false;
     std::vector<double> prefix_confidence;
+};
+
+enum common_speculative_shadow_event_type {
+    COMMON_SPECULATIVE_SHADOW_STARTED,
+    COMMON_SPECULATIVE_SHADOW_SUCCEEDED_8,
+    COMMON_SPECULATIVE_SHADOW_SUCCEEDED_16,
+    COMMON_SPECULATIVE_SHADOW_FAILED,
+    COMMON_SPECULATIVE_SHADOW_CENSORED,
+    COMMON_SPECULATIVE_SHADOW_DROPPED,
+};
+
+struct common_speculative_shadow_event {
+    common_speculative_shadow_event_type type;
+    uint64_t probe_id;
+    uint64_t candidate_id;
+    uint16_t matched_length;
+};
+
+struct common_speculative_shadow_metrics {
+    uint64_t started = 0;
+    uint64_t succeeded_8 = 0;
+    uint64_t succeeded_16 = 0;
+    uint64_t failed = 0;
+    uint64_t censored = 0;
+    uint64_t dropped = 0;
+    uint64_t blocked_decisions = 0;
+    uint64_t provisional_decisions = 0;
+    uint64_t trusted_decisions = 0;
+    uint64_t rejected_no_evidence = 0;
+    uint64_t rejected_confidence = 0;
 };
 
 void common_speculative_apply_global_budget(
@@ -115,6 +147,9 @@ public:
             llama_seq_id seq_id = 0);
 
     void observe_ordinary(int64_t decode_time_us, llama_seq_id seq_id = 0);
+    void observe_output_token(llama_token token, llama_seq_id seq_id = 0);
+    std::vector<common_speculative_shadow_event> take_shadow_events(llama_seq_id seq_id = 0);
+    const common_speculative_shadow_metrics & shadow_metrics() const;
 
 private:
     struct position_stats {
@@ -129,16 +164,41 @@ private:
     };
 
     struct admission_stats {
-        double survived = 1.0;
-        double failed = 1.0;
+        double survived_8 = 1.0;
+        double failed_8 = 1.0;
+        double survived_16 = 1.0;
+        double failed_16 = 1.0;
+        uint64_t outcomes_8 = 0;
+        uint64_t outcomes_16 = 0;
     };
 
     struct admission_decision {
         bool admit = false;
         bool bootstrap = false;
+        uint8_t level = 0;
+        uint16_t verification_cap = 0;
         double lower_confidence = 0.0;
         double upper_confidence = 1.0;
         double evidence = 0.0;
+    };
+
+    struct shadow_contributor {
+        common_speculative_candidate candidate;
+        uint64_t admission_key = 0;
+        uint64_t cooldown_key = 0;
+        uint64_t context_key = 0;
+    };
+
+    struct shadow_probe {
+        uint64_t probe_id = 0;
+        uint64_t candidate_id = 0;
+        llama_tokens tokens;
+        std::vector<shadow_contributor> contributors;
+        uint16_t matched = 0;
+        uint16_t mtp_agreement = 0;
+        uint16_t original_length = 0;
+        uint8_t family_support = 0;
+        bool recorded_8 = false;
     };
 
     struct cost_stats {
@@ -154,6 +214,11 @@ private:
         std::map<uint64_t, admission_stats> admissions;
     };
 
+    struct challenger_cooldown {
+        uint64_t next_observation = 0;
+        uint8_t failure_streak = 0;
+    };
+
     struct sequence_state {
         learning_state request_learning;
         std::string process_namespace;
@@ -162,10 +227,13 @@ private:
         uint64_t request_observations = 0;
         std::map<uint64_t, producer_stats> request_stats;
         bool challenger_started = false;
-        bool challenger_failed = false;
         uint64_t next_challenger_observation = 0;
         uint8_t empty_discovery_streak = 0;
-        uint8_t challenger_failure_streak = 0;
+        std::map<uint64_t, challenger_cooldown> challenger_cooldowns;
+        bool shadow_discovery_pending = false;
+        uint64_t next_probe_id = 1;
+        std::vector<shadow_probe> shadow_probes;
+        std::vector<common_speculative_shadow_event> shadow_events;
     };
 
     struct process_namespace_state {
@@ -175,13 +243,21 @@ private:
 
     double score_prefix(const common_speculative_candidate & candidate, uint16_t length, llama_seq_id seq_id) const;
     double prefix_confidence(const common_speculative_candidate & candidate, uint16_t position, llama_seq_id seq_id) const;
+    double conditional_acceptance(const common_speculative_candidate & candidate, uint16_t position, llama_seq_id seq_id) const;
     double verification_cost(const common_speculative_candidate & candidate, uint16_t length, llama_seq_id seq_id) const;
     static uint32_t context_bucket(const common_speculative_candidate & candidate);
     static uint32_t verification_shape_key(const common_speculative_candidate & candidate);
     static uint64_t context_key(const common_speculative_candidate & candidate);
+    static uint32_t admission_producer_id(const common_speculative_candidate & candidate);
     static uint64_t admission_key(const common_speculative_candidate & candidate);
-    static bool has_bootstrap_consensus(const common_speculative_candidate & candidate);
-    admission_decision evaluate_admission(const common_speculative_candidate & candidate, llama_seq_id seq_id) const;
+    static uint64_t cooldown_key(const common_speculative_candidate & candidate);
+    static bool is_ngram(const common_speculative_candidate & candidate);
+    static uint16_t agreement_with_mtp(const common_speculative_candidate & candidate, const std::vector<common_speculative_candidate> & candidates);
+    static size_t distinct_family_support(const common_speculative_candidate & candidate, const std::vector<common_speculative_candidate> & candidates, uint16_t horizon);
+    admission_decision evaluate_admission(const common_speculative_candidate & candidate, const std::vector<common_speculative_candidate> & candidates, llama_seq_id seq_id) const;
+    void register_shadow_probes(const std::vector<common_speculative_candidate> & candidates, llama_seq_id seq_id);
+    void update_shadow_acceptance(const shadow_contributor & contributor, size_t accepted, bool mismatch, llama_seq_id seq_id);
+    void update_shadow_admission(const shadow_contributor & contributor, bool success_8, bool failure_8, bool success_16, bool failure_16, llama_seq_id seq_id);
     learning_state & learning(llama_seq_id seq_id);
     const learning_state & learning(llama_seq_id seq_id) const;
     sequence_state & sequence(llama_seq_id seq_id);
@@ -201,4 +277,5 @@ private:
     uint64_t namespace_fallbacks_ = 0;
     std::map<std::string, process_namespace_state> process_namespaces_;
     std::vector<sequence_state> sequences_;
+    common_speculative_shadow_metrics shadow_metrics_;
 };

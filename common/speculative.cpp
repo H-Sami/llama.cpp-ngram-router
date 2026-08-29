@@ -3123,6 +3123,22 @@ common_speculative_draft_params & common_speculative_get_draft_params(
     return spec->dparams[seq_id];
 }
 
+static void common_speculative_trace_shadow_events(common_speculative * spec, llama_seq_id seq_id) {
+    const auto events = spec->controller.take_shadow_events(seq_id);
+    if (!spec->trace) {
+        return;
+    }
+    static const char * names[] = { "started", "succeeded_8", "succeeded_16", "failed", "censored", "dropped" };
+    for (const auto & event : events) {
+        *spec->trace << "{\"event\":\"shadow_probe\",\"seq_id\":" << seq_id
+                     << ",\"outcome\":\"" << names[event.type]
+                     << "\",\"probe_id\":" << event.probe_id
+                     << ",\"candidate_id\":" << event.candidate_id
+                     << ",\"matched_length\":" << event.matched_length << "}\n";
+    }
+    spec->trace->flush();
+}
+
 void common_speculative_begin(
         common_speculative * spec,
         llama_seq_id seq_id,
@@ -3136,9 +3152,14 @@ void common_speculative_begin(
     spec->controller.begin_request(seq_id, process_namespace);
 
     for (auto & impl : spec->impls) {
-        common_time_meas tm(impl->t_begin_us, !impl->gen_perf);
+        const int64_t begin_us = ggml_time_us();
         impl->begin(seq_id, prompt);
+        const int64_t elapsed_us = ggml_time_us() - begin_us;
+        impl->t_begin_us += elapsed_us;
         impl->n_call_begin++;
+        auto & producer = spec->metrics.producers[impl->producer_id - 1];
+        producer.begin_calls++;
+        producer.begin_time_us += elapsed_us;
     }
 }
 
@@ -3149,6 +3170,7 @@ void common_speculative_end(common_speculative * spec, llama_seq_id seq_id) {
 
     GGML_ASSERT(seq_id >= 0 && seq_id < (llama_seq_id) spec->dparams.size());
     spec->controller.end_request(seq_id);
+    common_speculative_trace_shadow_events(spec, seq_id);
     spec->impl_last[seq_id] = nullptr;
     spec->candidates[seq_id].clear();
     spec->selected_candidate_id[seq_id] = 0;
@@ -3248,6 +3270,7 @@ static void common_speculative_trace_decision(
         << ",\"admission_upper_confidence\":" << selection.admission_upper_confidence
         << ",\"admission_evidence\":" << selection.admission_evidence
         << ",\"admission_bootstrap\":" << (selection.admission_bootstrap ? "true" : "false")
+        << ",\"admission_level\":" << (uint32_t) selection.admission_level
         << ",\"challenger_cooldown_remaining\":" << selection.challenger_cooldown_remaining
         << ",\"challenger_failure_streak\":" << (uint32_t) selection.challenger_failure_streak
         << ",\"unbudgeted_prefix_length\":" << selection.unbudgeted_prefix_length
@@ -3344,6 +3367,18 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
         const int64_t proposal_time_us = ggml_time_us() - t_start_us;
         impl->t_draft_us += proposal_time_us;
         impl->n_call_draft++;
+        const bool called = std::any_of(local_params.begin(), local_params.end(), [](const auto & params) {
+            return params.drafting;
+        });
+        if (called) {
+            auto & producer = spec->metrics.producers[impl->producer_id - 1];
+            producer.draft_calls++;
+            producer.draft_time_us += proposal_time_us;
+            const bool empty = std::none_of(results.begin(), results.end(), [](const auto & tokens) {
+                return !tokens.empty();
+            });
+            producer.empty_calls += empty;
+        }
 
         for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) dparams.size(); ++seq_id) {
             if (requested[seq_id]) {
@@ -3430,6 +3465,9 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
                 impl->draft_extension(seq_id, hypothetical, mtp.tokens.back(), remaining, extension, &extension_span);
                 const int64_t proposal_time_us = ggml_time_us() - t_start_us;
                 cycle_proposal_time_us[seq_id] += proposal_time_us;
+                auto & producer = spec->metrics.producers[impl->producer_id - 1];
+                producer.extension_calls++;
+                producer.extension_time_us += proposal_time_us;
 
                 if (extension.empty()) {
                     continue;
@@ -3547,6 +3585,7 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
         }
 
         common_speculative_trace_decision(spec, seq_id, candidates, selection);
+        common_speculative_trace_shadow_events(spec, seq_id);
         if (selection.candidate_index >= 0) {
             auto & candidate = candidates[selection.candidate_index];
             candidate.tokens.resize(std::min<size_t>(selection.prefix_length, candidate.tokens.size()));
@@ -3804,6 +3843,14 @@ void common_speculative_add_verification_time(
     spec->verification_time_us[seq_id] += verification_time_us;
 }
 
+void common_speculative_observe_output_token(common_speculative * spec, llama_seq_id seq_id, llama_token token) {
+    if (spec == nullptr || seq_id < 0 || seq_id >= (llama_seq_id) spec->dparams.size()) {
+        return;
+    }
+    spec->controller.observe_output_token(token, seq_id);
+    common_speculative_trace_shadow_events(spec, seq_id);
+}
+
 common_speculative_controller_metrics common_speculative_get_controller_metrics(
         const common_speculative * spec) {
     if (spec == nullptr) {
@@ -3813,6 +3860,7 @@ common_speculative_controller_metrics common_speculative_get_controller_metrics(
     result.namespace_evictions = spec->controller.process_namespace_evictions();
     result.namespace_fallbacks = spec->controller.process_namespace_fallbacks();
     result.resident_namespaces = spec->controller.process_namespace_count();
+    result.shadow = spec->controller.shadow_metrics();
     return result;
 }
 

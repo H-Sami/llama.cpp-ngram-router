@@ -17,6 +17,13 @@ struct common_speculative_producer_metrics {
     uint64_t observed_tokens = 0;
     uint64_t accepted_tokens = 0;
     uint64_t censored_selections = 0;
+    uint64_t begin_calls = 0;
+    uint64_t draft_calls = 0;
+    uint64_t empty_calls = 0;
+    uint64_t extension_calls = 0;
+    uint64_t begin_time_us = 0;
+    uint64_t draft_time_us = 0;
+    uint64_t extension_time_us = 0;
 };
 
 struct common_speculative_controller_metrics {
@@ -32,6 +39,7 @@ struct common_speculative_controller_metrics {
     uint64_t namespace_evictions = 0;
     uint64_t namespace_fallbacks = 0;
     size_t resident_namespaces = 0;
+    common_speculative_shadow_metrics shadow;
     std::vector<common_speculative_producer_metrics> producers;
 };
 
@@ -132,6 +140,9 @@ void common_speculative_add_verification_time(
         common_speculative * spec,
         llama_seq_id seq_id,
         int64_t verification_time_us);
+
+// Reports one target token after the server commits it to the response.
+void common_speculative_observe_output_token(common_speculative * spec, llama_seq_id seq_id, llama_token token);
 
 common_speculative_controller_metrics common_speculative_get_controller_metrics(
         const common_speculative * spec);
