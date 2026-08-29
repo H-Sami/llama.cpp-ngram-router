@@ -2198,7 +2198,7 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
     bool save_static;
 
     struct seq_info {
-        size_t cache_size = 0; // number of tokens in n-gram cache
+        llama_tokens cached_tokens;
 
         common_ngram_cache ngram_cache_context;
         common_ngram_cache ngram_cache_dynamic;
@@ -2256,8 +2256,10 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
         }
     }
 
-    void begin(llama_seq_id /*seq_id*/, const llama_tokens & /*prompt*/) override {
-        // noop
+    void begin(llama_seq_id seq_id, const llama_tokens & /*prompt*/) override {
+        auto & sinfo = sinfos[seq_id];
+        sinfo.cached_tokens.clear();
+        sinfo.ngram_cache_context.clear();
     }
 
     void draft_one(
@@ -2268,28 +2270,18 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
 
         const auto & prompt = *dparams.prompt;
 
-        if (sinfo.cache_size < prompt.size() + 1) {
-            llama_tokens tokens_new;
-            tokens_new.reserve(prompt.size() + 1 - sinfo.cache_size);
-            for (size_t j = sinfo.cache_size; j < prompt.size(); ++j) {
-                tokens_new.push_back(prompt[j]);
-            }
-            tokens_new.push_back(dparams.id_last); // add the last token
-
-            // Update context ngram cache with new dparams.prompt:
-            common_ngram_cache_update(
-                    sinfo.ngram_cache_context,
-                    LLAMA_NGRAM_MIN, LLAMA_NGRAM_MAX,
-                    tokens_new, tokens_new.size(), false);
-            sinfo.cache_size = prompt.size() + 1;
-        }
-
         llama_tokens inp;
         inp.reserve(prompt.size() + 1);
         for (size_t j = 0; j < prompt.size(); ++j) {
             inp.push_back(prompt[j]);
         }
         inp.push_back(dparams.id_last);
+
+        common_ngram_cache_update_append(
+                sinfo.ngram_cache_context,
+                sinfo.cached_tokens,
+                inp,
+                LLAMA_NGRAM_MIN, LLAMA_NGRAM_MAX);
 
         result.push_back(dparams.id_last);
 
@@ -2321,6 +2313,29 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
 
             draft_one(seq_id, dp);
         }
+    }
+
+    void draft_extension(
+            llama_seq_id seq_id,
+            const llama_tokens & prompt,
+            llama_token id_last,
+            int32_t n_max,
+            llama_tokens & result,
+            common_speculative_span * /*span*/) override {
+        if (n_max <= 0) {
+            return;
+        }
+
+        auto & sinfo = sinfos[seq_id];
+        llama_tokens inp = prompt;
+        inp.push_back(id_last);
+        llama_tokens draft = { id_last };
+        common_ngram_cache_draft(
+                inp, draft, std::min<int32_t>(n_draft, n_max), LLAMA_NGRAM_MIN, LLAMA_NGRAM_MAX,
+                sinfo.ngram_cache_context,
+                sinfo.ngram_cache_dynamic,
+                sinfo.ngram_cache_static);
+        result.assign(draft.begin() + 1, draft.end());
     }
 
     void accept(llama_seq_id /*seq_id*/, uint16_t /*n_accepted*/, bool /*is_other*/) override {
@@ -2376,7 +2391,7 @@ static common_speculative_impl_ngram_cache create_state_ngram_cache(
         uint32_t n_seq,
         const std::string & path_static,
         const std::string & path_dynamic) {
-    uint16_t n_draft = 8; // TODO get from config?
+    const uint16_t n_draft = std::clamp(config.params.ngram_cache.n_max, 1, 1024);
 
     // TODO bool param in common/common.h to set save_static/save_dynamic?
     bool save_static = false;
@@ -2542,7 +2557,7 @@ int32_t common_speculative_n_max(const common_params_speculative * spec) {
                 ngram_max = std::max(ngram_max, std::max(0, spec->ngram_mod.n_max));
                 break;
             case COMMON_SPECULATIVE_TYPE_NGRAM_CACHE:
-                n_max = std::max(n_max, (int32_t) 8);
+                n_max = std::max(n_max, spec->ngram_cache.n_max);
                 break;
             case COMMON_SPECULATIVE_TYPE_NONE:
             case COMMON_SPECULATIVE_TYPE_COUNT:
@@ -2983,9 +2998,6 @@ common_speculative * common_speculative_init(common_params_speculative & params,
     }
     if (controller_enabled) {
         for (const auto & impl : impls) {
-            if (impl->type == COMMON_SPECULATIVE_TYPE_NGRAM_CACHE) {
-                throw std::runtime_error("ngram-cache is not supported by the speculative controller until its slot reset behavior is fixed");
-            }
             if (impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE ||
                 impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3 ||
                 impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH ||
@@ -3009,7 +3021,7 @@ common_speculative * common_speculative_init(common_params_speculative & params,
         /* .impls                 = */ std::move(impls),
         /* .impl_last             = */ std::vector<common_speculative_impl *>(n_seq, nullptr),
         /* .synth_probs           = */ {},
-        /* .controller            = */ common_speculative_controller(params.controller.mode, params.controller.safety_margin, params.controller.decay, params.controller.warmup, params.controller.max_verify, params.controller.persistence, n_seq),
+        /* .controller            = */ common_speculative_controller(params.controller.mode, params.controller.safety_margin, params.controller.decay, params.controller.warmup, params.controller.max_verify, params.controller.persistence, n_seq, params.controller.max_namespaces),
         /* .context_capacity      = */ params.draft.ctx_tgt ? (int32_t) llama_n_ctx(params.draft.ctx_tgt) : 0,
         /* .batch_size            = */ params.draft.ctx_tgt ? (int32_t) llama_n_batch(params.draft.ctx_tgt) : 0,
         /* .ubatch_size           = */ params.draft.ctx_tgt ? (int32_t) llama_n_ubatch(params.draft.ctx_tgt) : 0,
@@ -3111,13 +3123,17 @@ common_speculative_draft_params & common_speculative_get_draft_params(
     return spec->dparams[seq_id];
 }
 
-void common_speculative_begin(common_speculative * spec, llama_seq_id seq_id, const llama_tokens & prompt) {
+void common_speculative_begin(
+        common_speculative * spec,
+        llama_seq_id seq_id,
+        const llama_tokens & prompt,
+        const std::string & process_namespace) {
     if (spec == nullptr) {
         return;
     }
 
     common_speculative_end(spec, seq_id);
-    spec->controller.begin_request(seq_id);
+    spec->controller.begin_request(seq_id, process_namespace);
 
     for (auto & impl : spec->impls) {
         common_time_meas tm(impl->t_begin_us, !impl->gen_perf);
@@ -3132,6 +3148,7 @@ void common_speculative_end(common_speculative * spec, llama_seq_id seq_id) {
     }
 
     GGML_ASSERT(seq_id >= 0 && seq_id < (llama_seq_id) spec->dparams.size());
+    spec->controller.end_request(seq_id);
     spec->impl_last[seq_id] = nullptr;
     spec->candidates[seq_id].clear();
     spec->selected_candidate_id[seq_id] = 0;
@@ -3397,7 +3414,8 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
                 if (impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE &&
                     impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K &&
                     impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V &&
-                    impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_MOD) {
+                    impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_MOD &&
+                    impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_CACHE) {
                     continue;
                 }
 
@@ -3788,7 +3806,14 @@ void common_speculative_add_verification_time(
 
 common_speculative_controller_metrics common_speculative_get_controller_metrics(
         const common_speculative * spec) {
-    return spec != nullptr ? spec->metrics : common_speculative_controller_metrics{};
+    if (spec == nullptr) {
+        return {};
+    }
+    auto result = spec->metrics;
+    result.namespace_evictions = spec->controller.process_namespace_evictions();
+    result.namespace_fallbacks = spec->controller.process_namespace_fallbacks();
+    result.resident_namespaces = spec->controller.process_namespace_count();
+    return result;
 }
 
 // TODO: support the case of more than one speculative implementations having a state

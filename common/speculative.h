@@ -29,6 +29,9 @@ struct common_speculative_controller_metrics {
     uint64_t cooldown_decisions = 0;
     uint64_t budget_limited_decisions = 0;
     uint64_t budget_tokens_removed = 0;
+    uint64_t namespace_evictions = 0;
+    uint64_t namespace_fallbacks = 0;
+    size_t resident_namespaces = 0;
     std::vector<common_speculative_producer_metrics> producers;
 };
 
@@ -101,7 +104,11 @@ struct common_speculative_draft_params {
 common_speculative_draft_params & common_speculative_get_draft_params(common_speculative * spec, llama_seq_id seq_id);
 
 // optionally call once at the beginning of a new generation
-void common_speculative_begin(common_speculative * spec, llama_seq_id seq_id, const llama_tokens & prompt);
+void common_speculative_begin(
+        common_speculative * spec,
+        llama_seq_id seq_id,
+        const llama_tokens & prompt,
+        const std::string & process_namespace = {});
 
 // call when generation ends or is canceled
 void common_speculative_end(common_speculative * spec, llama_seq_id seq_id);

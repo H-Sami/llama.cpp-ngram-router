@@ -123,14 +123,17 @@ common_speculative_controller::common_speculative_controller(
         uint32_t warmup,
         uint32_t max_verify,
         common_speculative_controller_persistence persistence,
-        uint32_t n_seq)
+        uint32_t n_seq,
+        uint32_t max_namespaces)
     : mode_(mode)
     , safety_margin_(std::max(0.0f, safety_margin))
     , decay_(std::clamp((double) decay, 0.0, 1.0))
     , warmup_(warmup)
     , max_verify_(max_verify)
     , persistence_(persistence)
+    , max_namespaces_(std::max(1u, max_namespaces))
     , sequences_(std::max(1u, n_seq)) {
+    process_namespaces_[{}].last_used = ++namespace_clock_;
 }
 
 common_speculative_controller_mode common_speculative_controller::mode() const {
@@ -141,9 +144,59 @@ uint32_t common_speculative_controller::max_verify() const {
     return max_verify_;
 }
 
-void common_speculative_controller::begin_request(llama_seq_id seq_id) {
+void common_speculative_controller::begin_request(llama_seq_id seq_id, const std::string & process_namespace) {
     auto & state = sequence(seq_id);
     state = {};
+    state.process_namespace = process_namespace;
+    state.request_active = true;
+
+    if (persistence_ != COMMON_SPECULATIVE_CONTROLLER_PERSISTENCE_PROCESS) {
+        return;
+    }
+
+    auto it = process_namespaces_.find(process_namespace);
+    if (it == process_namespaces_.end() && process_namespaces_.size() >= max_namespaces_) {
+        auto victim = process_namespaces_.end();
+        for (auto candidate = process_namespaces_.begin(); candidate != process_namespaces_.end(); ++candidate) {
+            bool active = false;
+            for (const auto & sequence_state : sequences_) {
+                active |= sequence_state.request_active && sequence_state.process_namespace_available &&
+                    sequence_state.process_namespace == candidate->first;
+            }
+            if (active) {
+                continue;
+            }
+            if (victim == process_namespaces_.end() || candidate->second.last_used < victim->second.last_used ||
+                    (candidate->second.last_used == victim->second.last_used && candidate->first < victim->first)) {
+                victim = candidate;
+            }
+        }
+        if (victim == process_namespaces_.end()) {
+            state.process_namespace_available = false;
+            namespace_fallbacks_++;
+            return;
+        }
+        process_namespaces_.erase(victim);
+        namespace_evictions_++;
+    }
+
+    process_namespaces_[process_namespace].last_used = ++namespace_clock_;
+}
+
+void common_speculative_controller::end_request(llama_seq_id seq_id) {
+    sequence(seq_id).request_active = false;
+}
+
+size_t common_speculative_controller::process_namespace_count() const {
+    return persistence_ == COMMON_SPECULATIVE_CONTROLLER_PERSISTENCE_PROCESS ? process_namespaces_.size() : 0;
+}
+
+uint64_t common_speculative_controller::process_namespace_evictions() const {
+    return namespace_evictions_;
+}
+
+uint64_t common_speculative_controller::process_namespace_fallbacks() const {
+    return namespace_fallbacks_;
 }
 
 bool common_speculative_controller::allow_challengers(llama_seq_id seq_id) const {
@@ -288,15 +341,19 @@ common_speculative_controller::admission_decision common_speculative_controller:
 }
 
 common_speculative_controller::learning_state & common_speculative_controller::learning(llama_seq_id seq_id) {
-    return persistence_ == COMMON_SPECULATIVE_CONTROLLER_PERSISTENCE_PROCESS
-        ? process_learning_
-        : sequence(seq_id).request_learning;
+    auto & state = sequence(seq_id);
+    if (persistence_ != COMMON_SPECULATIVE_CONTROLLER_PERSISTENCE_PROCESS || !state.process_namespace_available) {
+        return state.request_learning;
+    }
+    return process_namespaces_.at(state.process_namespace).learning;
 }
 
 const common_speculative_controller::learning_state & common_speculative_controller::learning(llama_seq_id seq_id) const {
-    return persistence_ == COMMON_SPECULATIVE_CONTROLLER_PERSISTENCE_PROCESS
-        ? process_learning_
-        : sequence(seq_id).request_learning;
+    const auto & state = sequence(seq_id);
+    if (persistence_ != COMMON_SPECULATIVE_CONTROLLER_PERSISTENCE_PROCESS || !state.process_namespace_available) {
+        return state.request_learning;
+    }
+    return process_namespaces_.at(state.process_namespace).learning;
 }
 
 common_speculative_controller::sequence_state & common_speculative_controller::sequence(llama_seq_id seq_id) {

@@ -4270,6 +4270,16 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         }
     ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
     add_opt(common_arg(
+        {"--spec-controller-max-namespaces"}, "N",
+        string_format("maximum process-persistent controller namespaces (default: %u)", params.speculative.controller.max_namespaces),
+        [](common_params & params, int value) {
+            if (value < 1 || value > 4096) {
+                throw std::invalid_argument("speculative controller max namespaces must be between 1 and 4096");
+            }
+            params.speculative.controller.max_namespaces = value;
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
         {"--spec-controller-margin"}, "N",
         string_format("minimum utility margin over ordinary decoding (default: %.2f)", params.speculative.controller.safety_margin),
         [](common_params & params, const std::string & value_string) {
@@ -4334,6 +4344,16 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         [](common_params & params, const std::string & value) {
             params.speculative.controller.replay_path = value;
             params.speculative.controller.mode = COMMON_SPECULATIVE_CONTROLLER_MODE_REPLAY;
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
+        {"--spec-ngram-cache-n-max"}, "N",
+        string_format("maximum number of ngram-cache draft tokens (default: %d)", params.speculative.ngram_cache.n_max),
+        [](common_params & params, int value) {
+            if (value < 1 || value > 1024) {
+                throw std::invalid_argument("ngram-cache n-max must be between 1 and 1024 inclusive");
+            }
+            params.speculative.ngram_cache.n_max = value;
         }
     ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
     add_opt(common_arg(

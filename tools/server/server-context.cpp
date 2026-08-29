@@ -3834,7 +3834,11 @@ private:
                 slot.state = SLOT_STATE_GENERATING;
 
                 if (slot.can_speculate()) {
-                    common_speculative_begin(spec.get(), slot.id, slot.prompt.tokens.get_text_tokens());
+                    common_speculative_begin(
+                            spec.get(),
+                            slot.id,
+                            slot.prompt.tokens.get_text_tokens(),
+                            slot.task->params.speculative_controller_namespace);
                 }
             } else if (slot.state != SLOT_STATE_GENERATING) {
                 return;

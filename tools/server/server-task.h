@@ -77,6 +77,7 @@ struct task_params {
 
     struct common_params_sampling sampling;
     struct common_params_speculative speculative;
+    std::string speculative_controller_namespace;
 
     // response formatting
     bool               verbose  = false;

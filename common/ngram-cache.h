@@ -71,7 +71,17 @@ typedef std::unordered_map<common_ngram, common_ngram_cache_part, common_ngram_h
 // In order to get correct results inp_data can ONLY BE APPENDED TO.
 // Changes in the middle need a complete rebuild.
 void common_ngram_cache_update(
-    common_ngram_cache & ngram_cache, int ngram_min, int ngram_max, std::vector<llama_token> & inp_data, int nnew, bool print_progress);
+    common_ngram_cache & ngram_cache, int ngram_min, int ngram_max, const std::vector<llama_token> & inp_data, int nnew, bool print_progress);
+
+// Update an append-only request cache, rebuilding it when the token prefix has
+// changed (for example after slot reuse or context shifting). Returns true when
+// a rebuild was required.
+bool common_ngram_cache_update_append(
+    common_ngram_cache & ngram_cache,
+    std::vector<llama_token> & cached_tokens,
+    const std::vector<llama_token> & inp_data,
+    int ngram_min,
+    int ngram_max);
 
 // Try to draft tokens from ngram caches.
 // inp:                the tokens generated so far.

@@ -1613,8 +1613,13 @@ std::string server_task_result_metrics::to_metrics() {
             { "spec_controller_cooldown_decisions_total", "Controller: Decisions made while challenger cooldown was active", (double) controller.cooldown_decisions },
             { "spec_controller_budget_limited_decisions_total", "Controller: Selections truncated by the global verification budget", (double) controller.budget_limited_decisions },
             { "spec_controller_budget_tokens_removed_total", "Controller: Draft suffix tokens removed by the global verification budget", (double) controller.budget_tokens_removed },
+            { "spec_controller_namespace_evictions_total", "Controller: Inactive process-learning namespaces evicted", (double) controller.namespace_evictions },
+            { "spec_controller_namespace_fallbacks_total", "Controller: Requests using local learning because all resident namespaces were active", (double) controller.namespace_fallbacks },
         };
         add_items("counter", controller_counters);
+        add_items("gauge", {
+            { "spec_controller_resident_namespaces", "Controller: Resident process-learning namespaces", (double) controller.resident_namespaces },
+        });
 
         const auto escape_label = [](const std::string & value) {
             std::string result;

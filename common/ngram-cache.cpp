@@ -10,7 +10,7 @@
 #include <algorithm>
 
 void common_ngram_cache_update(common_ngram_cache & ngram_cache, int ngram_min, int ngram_max,
-                              std::vector<llama_token> & inp, int nnew, bool print_progress) {
+                              const std::vector<llama_token> & inp, int nnew, bool print_progress) {
     const int64_t t_start_ms = ggml_time_ms();
     const int64_t inp_size = inp.size();
 
@@ -49,6 +49,27 @@ void common_ngram_cache_update(common_ngram_cache & ngram_cache, int ngram_min, 
             }
         }
     }
+}
+
+bool common_ngram_cache_update_append(
+        common_ngram_cache & ngram_cache,
+        std::vector<llama_token> & cached_tokens,
+        const std::vector<llama_token> & inp,
+        int ngram_min,
+        int ngram_max) {
+    const bool append_only = cached_tokens.size() <= inp.size() &&
+        std::equal(cached_tokens.begin(), cached_tokens.end(), inp.begin());
+    if (!append_only) {
+        cached_tokens.clear();
+        ngram_cache.clear();
+    }
+    if (cached_tokens.size() < inp.size()) {
+        common_ngram_cache_update(
+                ngram_cache, ngram_min, ngram_max,
+                inp, inp.size() - cached_tokens.size(), false);
+        cached_tokens = inp;
+    }
+    return !append_only;
 }
 
 // Helper function to get a token from the combined, speculative sequence of inp and draft.

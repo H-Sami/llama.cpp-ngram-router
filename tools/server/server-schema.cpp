@@ -226,6 +226,16 @@ std::vector<std::unique_ptr<field>> make_llama_cmpl_schema(const common_params &
         ->set_desc("Minimum hits at ngram lookup for mgram to be proposed"));
 #endif
 
+    add((new field_str("speculative_controller_namespace"))
+        ->set_desc("Isolate process-persistent speculative controller learning for this request")
+        ->set_handler([&](field_eval_context & ctx, const json & data) {
+            const auto value = data.at("speculative_controller_namespace").get<std::string>();
+            if (value.size() > 128) {
+                throw std::runtime_error("Error: speculative_controller_namespace must not exceed 128 bytes");
+            }
+            ctx.params.speculative_controller_namespace = value;
+        }));
+
     add((new field_json("lora"))
         ->set_desc("A list of LoRA adapters to apply to this request. Each entry must have `id` and `scale` fields. Adapters not listed default to scale 0.0")
         ->set_handler([&](field_eval_context & ctx, const json & data) {

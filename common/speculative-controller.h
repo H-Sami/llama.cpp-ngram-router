@@ -89,12 +89,17 @@ public:
             uint32_t warmup = 4,
             uint32_t max_verify = 0,
             common_speculative_controller_persistence persistence = COMMON_SPECULATIVE_CONTROLLER_PERSISTENCE_PROCESS,
-            uint32_t n_seq = 1);
+            uint32_t n_seq = 1,
+            uint32_t max_namespaces = 64);
 
     common_speculative_controller_mode mode() const;
     uint32_t max_verify() const;
 
-    void begin_request(llama_seq_id seq_id = 0);
+    void begin_request(llama_seq_id seq_id = 0, const std::string & process_namespace = {});
+    void end_request(llama_seq_id seq_id = 0);
+    size_t process_namespace_count() const;
+    uint64_t process_namespace_evictions() const;
+    uint64_t process_namespace_fallbacks() const;
     bool allow_challengers(llama_seq_id seq_id = 0) const;
 
     common_speculative_selection select(
@@ -151,6 +156,9 @@ private:
 
     struct sequence_state {
         learning_state request_learning;
+        std::string process_namespace;
+        bool process_namespace_available = true;
+        bool request_active = false;
         uint64_t request_observations = 0;
         std::map<uint64_t, producer_stats> request_stats;
         bool challenger_started = false;
@@ -158,6 +166,11 @@ private:
         uint64_t next_challenger_observation = 0;
         uint8_t empty_discovery_streak = 0;
         uint8_t challenger_failure_streak = 0;
+    };
+
+    struct process_namespace_state {
+        learning_state learning;
+        uint64_t last_used = 0;
     };
 
     double score_prefix(const common_speculative_candidate & candidate, uint16_t length, llama_seq_id seq_id) const;
@@ -182,6 +195,10 @@ private:
     uint32_t warmup_;
     uint32_t max_verify_;
     common_speculative_controller_persistence persistence_;
-    learning_state process_learning_;
+    uint32_t max_namespaces_;
+    uint64_t namespace_clock_ = 0;
+    uint64_t namespace_evictions_ = 0;
+    uint64_t namespace_fallbacks_ = 0;
+    std::map<std::string, process_namespace_state> process_namespaces_;
     std::vector<sequence_state> sequences_;
 };
