@@ -74,7 +74,46 @@ struct common_speculative_selection {
     uint8_t challenger_failure_streak = 0;
     uint16_t unbudgeted_prefix_length = 0;
     bool budget_limited = false;
+    uint64_t hot_key = 0;
+    uint16_t hot_rung = 0;
+    uint16_t hot_requested_length = 0;
+    bool hot_applied = false;
+    uint8_t hot_transition_reason = 0;
     std::vector<double> prefix_confidence;
+};
+
+enum common_speculative_hot_event_type {
+    COMMON_SPECULATIVE_HOT_NONE,
+    COMMON_SPECULATIVE_HOT_ENTRY,
+    COMMON_SPECULATIVE_HOT_PROMOTION,
+    COMMON_SPECULATIVE_HOT_RETENTION,
+    COMMON_SPECULATIVE_HOT_ROLLBACK,
+    COMMON_SPECULATIVE_HOT_RESET,
+    COMMON_SPECULATIVE_HOT_EXPIRATION,
+};
+
+struct common_speculative_hot_event {
+    common_speculative_hot_event_type type;
+    uint64_t hot_key;
+    uint32_t producer_id;
+    uint16_t previous_rung;
+    uint16_t current_rung;
+    uint16_t proposed_length;
+    uint16_t accepted_length;
+};
+
+struct common_speculative_hot_metrics {
+    uint64_t entries = 0;
+    uint64_t promotions_24 = 0;
+    uint64_t promotions_32 = 0;
+    uint64_t promotions_48 = 0;
+    uint64_t full_matches = 0;
+    uint64_t retained = 0;
+    uint64_t rollbacks = 0;
+    uint64_t resets = 0;
+    uint64_t expirations = 0;
+    uint64_t selected_tokens = 0;
+    uint64_t accepted_tokens = 0;
 };
 
 enum common_speculative_shadow_event_type {
@@ -149,7 +188,10 @@ public:
     void observe_ordinary(int64_t decode_time_us, llama_seq_id seq_id = 0);
     void observe_output_token(llama_token token, llama_seq_id seq_id = 0);
     std::vector<common_speculative_shadow_event> take_shadow_events(llama_seq_id seq_id = 0);
+    std::vector<common_speculative_hot_event> take_hot_events(llama_seq_id seq_id = 0);
     const common_speculative_shadow_metrics & shadow_metrics() const;
+    const common_speculative_hot_metrics & hot_metrics() const;
+    size_t active_hot_entries() const;
 
 private:
     struct position_stats {
@@ -219,6 +261,21 @@ private:
         uint8_t failure_streak = 0;
     };
 
+    struct hot_region {
+        uint32_t producer_id = 0;
+        uint16_t rung = 16;
+        uint64_t last_selected_observation = 0;
+        common_speculative_hot_event_type last_transition = COMMON_SPECULATIVE_HOT_NONE;
+    };
+
+    struct pending_hot_feedback {
+        uint64_t candidate_id = 0;
+        uint64_t hot_key = 0;
+        uint32_t producer_id = 0;
+        uint16_t target_rung = 0;
+        bool active = false;
+    };
+
     struct sequence_state {
         learning_state request_learning;
         std::string process_namespace;
@@ -234,6 +291,9 @@ private:
         uint64_t next_probe_id = 1;
         std::vector<shadow_probe> shadow_probes;
         std::vector<common_speculative_shadow_event> shadow_events;
+        std::map<uint64_t, hot_region> hot_regions;
+        pending_hot_feedback pending_hot;
+        std::vector<common_speculative_hot_event> hot_events;
     };
 
     struct process_namespace_state {
@@ -251,13 +311,19 @@ private:
     static uint32_t admission_producer_id(const common_speculative_candidate & candidate);
     static uint64_t admission_key(const common_speculative_candidate & candidate);
     static uint64_t cooldown_key(const common_speculative_candidate & candidate);
+    static uint64_t hot_key(const common_speculative_candidate & candidate);
     static bool is_ngram(const common_speculative_candidate & candidate);
+    static uint16_t ngram_span_begin(const common_speculative_candidate & candidate);
+    static uint16_t next_hot_rung(uint16_t rung);
+    static uint16_t previous_hot_rung(uint16_t rung);
+    static bool agrees_with_complete_mtp(const common_speculative_candidate & candidate, const std::vector<common_speculative_candidate> & candidates);
     static uint16_t agreement_with_mtp(const common_speculative_candidate & candidate, const std::vector<common_speculative_candidate> & candidates);
     static size_t distinct_family_support(const common_speculative_candidate & candidate, const std::vector<common_speculative_candidate> & candidates, uint16_t horizon);
     admission_decision evaluate_admission(const common_speculative_candidate & candidate, const std::vector<common_speculative_candidate> & candidates, llama_seq_id seq_id) const;
     void register_shadow_probes(const std::vector<common_speculative_candidate> & candidates, llama_seq_id seq_id);
     void update_shadow_acceptance(const shadow_contributor & contributor, size_t accepted, bool mismatch, llama_seq_id seq_id);
     void update_shadow_admission(const shadow_contributor & contributor, bool success_8, bool failure_8, bool success_16, bool failure_16, llama_seq_id seq_id);
+    void expire_hot_regions(llama_seq_id seq_id);
     learning_state & learning(llama_seq_id seq_id);
     const learning_state & learning(llama_seq_id seq_id) const;
     sequence_state & sequence(llama_seq_id seq_id);
@@ -278,4 +344,5 @@ private:
     std::map<std::string, process_namespace_state> process_namespaces_;
     std::vector<sequence_state> sequences_;
     common_speculative_shadow_metrics shadow_metrics_;
+    common_speculative_hot_metrics hot_metrics_;
 };

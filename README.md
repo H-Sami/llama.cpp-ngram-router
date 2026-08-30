@@ -29,6 +29,10 @@ The router learns acceptance per token position, not just one average for an ent
 
 If a long n-gram draft performs no better than the available MTP draft, that challenger enters a temporary cooldown. Useful challengers are allowed back in, so a bad match does not permanently disable a producer.
 
+When a trusted n-gram draft is accepted in full, the router marks that request-local pattern as a hot region. Repeated full matches raise its verification length from 16 to 24, 32, then 48 tokens. Partial matches keep or lower the current length, and a complete miss resets it to 16. Hot regions expire when unused and never carry into another request.
+
+Each sequence has its own `ngram-mod` table. The table is rebuilt from the current prompt at the start of a request, so another slot or an earlier request cannot change its matches.
+
 ## Available producers
 
 | Type | Role |
@@ -96,6 +100,8 @@ Useful controls include:
 | `--spec-controller-trace` | Write decisions and feedback as JSON Lines |
 
 Run `llama-server --help` for producer-specific n-gram settings.
+
+Qwen3.8 uses bounded recurrent state. Keep llama.cpp context checkpoints enabled when using long multi-turn or agent sessions. Disabling them with `--ctx-checkpoints 0` can force a complete prompt reprocessing when the next request changes beyond the model's short rollback window.
 
 ## Current scope
 

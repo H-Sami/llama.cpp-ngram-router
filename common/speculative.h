@@ -39,7 +39,9 @@ struct common_speculative_controller_metrics {
     uint64_t namespace_evictions = 0;
     uint64_t namespace_fallbacks = 0;
     size_t resident_namespaces = 0;
+    size_t active_hot_entries = 0;
     common_speculative_shadow_metrics shadow;
+    common_speculative_hot_metrics hot;
     std::vector<common_speculative_producer_metrics> producers;
 };
 

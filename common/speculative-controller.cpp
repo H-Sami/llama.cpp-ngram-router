@@ -190,6 +190,8 @@ void common_speculative_controller::end_request(llama_seq_id seq_id) {
         shadow_metrics_.censored++;
     }
     state.shadow_probes.clear();
+    state.hot_regions.clear();
+    state.pending_hot = {};
     state.request_active = false;
 }
 
@@ -291,12 +293,72 @@ uint64_t common_speculative_controller::cooldown_key(const common_speculative_ca
     return admission_key(candidate);
 }
 
+uint64_t common_speculative_controller::hot_key(const common_speculative_candidate & candidate) {
+    return admission_key(candidate);
+}
+
 bool common_speculative_controller::is_ngram(const common_speculative_candidate & candidate) {
     return candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE ||
         candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K ||
         candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V ||
         candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_MOD ||
         candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_CACHE;
+}
+
+uint16_t common_speculative_controller::ngram_span_begin(const common_speculative_candidate & candidate) {
+    return candidate.provenance.size() > 1 ? candidate.provenance.back().begin : 0;
+}
+
+uint16_t common_speculative_controller::next_hot_rung(uint16_t rung) {
+    if (rung < 24) return 24;
+    if (rung < 32) return 32;
+    return 48;
+}
+
+uint16_t common_speculative_controller::previous_hot_rung(uint16_t rung) {
+    if (rung > 32) return 32;
+    if (rung > 24) return 24;
+    return 16;
+}
+
+bool common_speculative_controller::agrees_with_complete_mtp(
+        const common_speculative_candidate & candidate,
+        const std::vector<common_speculative_candidate> & candidates) {
+    bool has_mtp = false;
+    for (const auto & peer : candidates) {
+        if (peer.type != COMMON_SPECULATIVE_TYPE_DRAFT_MTP) {
+            continue;
+        }
+        has_mtp = true;
+        if (candidate.tokens.size() < peer.tokens.size()) {
+            continue;
+        }
+        if (std::equal(peer.tokens.begin(), peer.tokens.end(), candidate.tokens.begin())) {
+            return true;
+        }
+    }
+    return !has_mtp;
+}
+
+void common_speculative_controller::expire_hot_regions(llama_seq_id seq_id) {
+    auto & state = sequence(seq_id);
+    for (auto it = state.hot_regions.begin(); it != state.hot_regions.end();) {
+        if (state.request_observations - it->second.last_selected_observation < 64) {
+            ++it;
+            continue;
+        }
+        state.hot_events.push_back({
+            COMMON_SPECULATIVE_HOT_EXPIRATION,
+            it->first,
+            it->second.producer_id,
+            it->second.rung,
+            0,
+            0,
+            0,
+        });
+        hot_metrics_.expirations++;
+        it = state.hot_regions.erase(it);
+    }
 }
 
 uint16_t common_speculative_controller::agreement_with_mtp(
@@ -602,6 +664,8 @@ common_speculative_selection common_speculative_controller::select(
     common_speculative_selection result;
     auto & state = sequence(seq_id);
     const auto & learned = learning(seq_id);
+    state.pending_hot = {};
+    expire_hot_regions(seq_id);
 
     for (auto & item : state.challenger_cooldowns) {
         if (state.request_observations >= item.second.next_observation) {
@@ -729,7 +793,8 @@ common_speculative_selection common_speculative_controller::select(
 
     if (result.candidate_index >= 0 &&
             candidates[result.candidate_index].type != COMMON_SPECULATIVE_TYPE_DRAFT_MTP) {
-        const auto admission = evaluate_admission(candidates[result.candidate_index], candidates, seq_id);
+        const auto & selected = candidates[result.candidate_index];
+        const auto admission = evaluate_admission(selected, candidates, seq_id);
         result.admission_lower_confidence = admission.lower_confidence;
         result.admission_upper_confidence = admission.upper_confidence;
         result.admission_evidence = admission.evidence;
@@ -743,6 +808,32 @@ common_speculative_selection common_speculative_controller::select(
             shadow_metrics_.provisional_decisions++;
         } else {
             shadow_metrics_.trusted_decisions++;
+        }
+
+        if (admission.level == 2) {
+            const uint64_t key = hot_key(selected);
+            result.hot_key = key;
+            const auto hot = state.hot_regions.find(key);
+            if (hot == state.hot_regions.end()) {
+                if (result.prefix_length >= 16 && selected.tokens.size() >= 16) {
+                    state.pending_hot = { selected.candidate_id, key, admission_producer_id(selected), 16, false };
+                    result.hot_requested_length = 16;
+                }
+            } else {
+                hot->second.last_selected_observation = state.request_observations;
+                result.hot_rung = hot->second.rung;
+                result.hot_transition_reason = hot->second.last_transition;
+                uint16_t available = max_verify_ > 0
+                    ? std::min<size_t>(selected.tokens.size(), max_verify_)
+                    : selected.tokens.size();
+                if (available >= hot->second.rung && agrees_with_complete_mtp(selected, candidates)) {
+                    state.pending_hot = { selected.candidate_id, key, admission_producer_id(selected), hot->second.rung, true };
+                    result.hot_requested_length = hot->second.rung;
+                    const uint16_t normal_length = result.prefix_length;
+                    result.prefix_length = std::max(result.prefix_length, hot->second.rung);
+                    result.hot_applied = result.prefix_length > normal_length;
+                }
+            }
         }
     } else if (std::any_of(candidates.begin(), candidates.end(), is_ngram)) {
         shadow_metrics_.blocked_decisions++;
@@ -795,6 +886,69 @@ void common_speculative_controller::observe(
                 failure.next_observation = state.request_observations + cooldown;
             } else if (n_accepted > mtp_length) {
                 state.challenger_cooldowns.erase(key);
+            }
+
+            const auto pending = state.pending_hot;
+            state.pending_hot = {};
+            if (pending.candidate_id == candidate.candidate_id && candidate.tokens.size() >= pending.target_rung) {
+                const uint16_t span_begin = std::min<uint16_t>(ngram_span_begin(candidate), candidate.tokens.size());
+                const uint16_t proposed = candidate.tokens.size() - span_begin;
+                const uint16_t accepted = n_accepted > span_begin
+                    ? std::min<size_t>(n_accepted, candidate.tokens.size()) - span_begin
+                    : 0;
+                const bool fully_observed = mismatch_observed || n_observed >= candidate.tokens.size();
+
+                if (pending.active) {
+                    hot_metrics_.selected_tokens += proposed;
+                    hot_metrics_.accepted_tokens += accepted;
+                }
+
+                if (fully_observed && proposed > 0) {
+                    auto hot = state.hot_regions.find(pending.hot_key);
+                    if (!pending.active) {
+                        if (n_accepted == candidate.tokens.size()) {
+                            const uint16_t next = next_hot_rung(16);
+                            state.hot_regions[pending.hot_key] = { pending.producer_id, next, state.request_observations, COMMON_SPECULATIVE_HOT_ENTRY };
+                            state.hot_events.push_back({ COMMON_SPECULATIVE_HOT_ENTRY, pending.hot_key, pending.producer_id, 16, next, proposed, accepted });
+                            hot_metrics_.entries++;
+                            hot_metrics_.promotions_24++;
+                            hot_metrics_.full_matches++;
+                        }
+                    } else if (hot != state.hot_regions.end()) {
+                        const uint16_t previous = hot->second.rung;
+                        hot->second.last_selected_observation = state.request_observations;
+                        if (accepted == 0) {
+                            hot->second.rung = 16;
+                            hot->second.last_transition = COMMON_SPECULATIVE_HOT_RESET;
+                            state.hot_events.push_back({ COMMON_SPECULATIVE_HOT_RESET, pending.hot_key, pending.producer_id, previous, 16, proposed, accepted });
+                            hot_metrics_.resets++;
+                        } else if (n_accepted == candidate.tokens.size()) {
+                            const uint16_t next = next_hot_rung(previous);
+                            hot->second.rung = next;
+                            hot_metrics_.full_matches++;
+                            if (next != previous) {
+                                hot->second.last_transition = COMMON_SPECULATIVE_HOT_PROMOTION;
+                                state.hot_events.push_back({ COMMON_SPECULATIVE_HOT_PROMOTION, pending.hot_key, pending.producer_id, previous, next, proposed, accepted });
+                                if (next == 24) hot_metrics_.promotions_24++;
+                                if (next == 32) hot_metrics_.promotions_32++;
+                                if (next == 48) hot_metrics_.promotions_48++;
+                            } else {
+                                hot->second.last_transition = COMMON_SPECULATIVE_HOT_RETENTION;
+                                state.hot_events.push_back({ COMMON_SPECULATIVE_HOT_RETENTION, pending.hot_key, pending.producer_id, previous, previous, proposed, accepted });
+                                hot_metrics_.retained++;
+                            }
+                        } else if ((uint32_t) accepted * 4 >= (uint32_t) proposed * 3) {
+                            hot->second.last_transition = COMMON_SPECULATIVE_HOT_RETENTION;
+                            state.hot_events.push_back({ COMMON_SPECULATIVE_HOT_RETENTION, pending.hot_key, pending.producer_id, previous, previous, proposed, accepted });
+                            hot_metrics_.retained++;
+                        } else {
+                            hot->second.rung = previous_hot_rung(previous);
+                            hot->second.last_transition = COMMON_SPECULATIVE_HOT_ROLLBACK;
+                            state.hot_events.push_back({ COMMON_SPECULATIVE_HOT_ROLLBACK, pending.hot_key, pending.producer_id, previous, hot->second.rung, proposed, accepted });
+                            hot_metrics_.rollbacks++;
+                        }
+                    }
+                }
             }
         }
         auto update_acceptance = [&](producer_stats & stats, size_t begin) {
@@ -1051,6 +1205,25 @@ std::vector<common_speculative_shadow_event> common_speculative_controller::take
     return result;
 }
 
+std::vector<common_speculative_hot_event> common_speculative_controller::take_hot_events(llama_seq_id seq_id) {
+    auto & events = sequence(seq_id).hot_events;
+    auto result = std::move(events);
+    events.clear();
+    return result;
+}
+
 const common_speculative_shadow_metrics & common_speculative_controller::shadow_metrics() const {
     return shadow_metrics_;
+}
+
+const common_speculative_hot_metrics & common_speculative_controller::hot_metrics() const {
+    return hot_metrics_;
+}
+
+size_t common_speculative_controller::active_hot_entries() const {
+    size_t result = 0;
+    for (const auto & state : sequences_) {
+        result += state.hot_regions.size();
+    }
+    return result;
 }

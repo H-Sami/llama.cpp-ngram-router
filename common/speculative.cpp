@@ -1981,8 +1981,8 @@ struct common_speculative_impl_ngram_map_k : public common_speculative_impl {
 struct common_speculative_impl_ngram_mod : public common_speculative_impl {
     common_params_speculative_ngram_mod params;
 
-    // shared across all sequences
-    common_ngram_mod mod;
+    // one table per sequence
+    std::vector<common_ngram_mod> mods;
 
     // enable trace logging if LLAMA_TRACE is set
     const bool verbose;
@@ -2007,7 +2007,6 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
             bool controller_managed)
         : common_speculative_impl(COMMON_SPECULATIVE_TYPE_NGRAM_MOD, n_seq, params.ngram_mod.n_max)
         , params(params.ngram_mod)
-        , mod(params.ngram_mod.n_match, 4*1024*1024)
         , verbose(std::getenv("LLAMA_TRACE") != nullptr)
         , controller_managed(controller_managed) {
         static_assert(sizeof(llama_token) == sizeof(common_ngram_mod::entry_t));
@@ -2015,8 +2014,13 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
         SPC_TRC("%s", "adding speculative implementation 'ngram-mod'\n");
         SPC_TRC("- n_match=%d, n_max=%d, n_min=%d, controller_managed=%d\n",
                 this->params.n_match, this->params.n_max, this->params.n_min, controller_managed);
-        SPC_TRC("- mod size=%zu (%.3f MB)\n",
-                mod.size(), (float)(mod.size_bytes())/1024/1024);
+        mods.reserve(n_seq);
+        for (uint32_t i = 0; i < n_seq; ++i) {
+            mods.emplace_back(params.ngram_mod.n_match, 4*1024*1024);
+        }
+
+        SPC_TRC("- mod size=%zu (%.3f MB per sequence)\n",
+                mods[0].size(), (float)(mods[0].size_bytes())/1024/1024);
 
         if (this->params.n_match < 16) {
             SPC_WRN("ngram_mod n_match=%d is too small - poor quality is possible, "
@@ -2028,9 +2032,12 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
 
     void begin(llama_seq_id seq_id, const llama_tokens & prompt) override {
         auto & sinfo = sinfos[seq_id];
+        auto & mod = mods[seq_id];
 
         sinfo.i_last = 0;
         sinfo.n_draft_last = 0;
+        sinfo.n_low = 0;
+        mod.reset();
 
         const size_t n = mod.get_n();
         if (prompt.size() < n) {
@@ -2058,6 +2065,7 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
             llama_seq_id seq_id,
             common_speculative_draft_params & dparams) {
         auto & sinfo = sinfos[seq_id];
+        auto & mod = mods[seq_id];
         auto & result = *dparams.result;
 
         const auto & prompt = *dparams.prompt;
@@ -2129,12 +2137,13 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
     }
 
     void draft_extension(
-            llama_seq_id /*seq_id*/,
+            llama_seq_id seq_id,
             const llama_tokens & prompt,
             llama_token id_last,
             int32_t n_max,
             llama_tokens & result,
             common_speculative_span * /*span*/) override {
+        auto & mod = mods[seq_id];
         const size_t n = mod.get_n();
         if (prompt.size() < n) {
             return;
@@ -2167,6 +2176,7 @@ struct common_speculative_impl_ngram_mod : public common_speculative_impl {
         }
 
         auto & sinfo = sinfos[seq_id];
+        auto & mod = mods[seq_id];
 
         // compute acceptance fraction if we have a recorded draft length
         if (sinfo.n_draft_last > 0) {
@@ -3139,6 +3149,25 @@ static void common_speculative_trace_shadow_events(common_speculative * spec, ll
     spec->trace->flush();
 }
 
+static void common_speculative_trace_hot_events(common_speculative * spec, llama_seq_id seq_id) {
+    const auto events = spec->controller.take_hot_events(seq_id);
+    if (!spec->trace) {
+        return;
+    }
+    static const char * names[] = { "none", "entry", "promotion", "retention", "rollback", "reset", "expiration" };
+    for (const auto & event : events) {
+        *spec->trace << "{\"event\":\"hot_transition\",\"seq_id\":" << seq_id
+                     << ",\"outcome\":\"" << names[event.type]
+                     << "\",\"hot_key\":" << event.hot_key
+                     << ",\"producer_id\":" << event.producer_id
+                     << ",\"previous_rung\":" << event.previous_rung
+                     << ",\"current_rung\":" << event.current_rung
+                     << ",\"proposed_length\":" << event.proposed_length
+                     << ",\"accepted_length\":" << event.accepted_length << "}\n";
+    }
+    spec->trace->flush();
+}
+
 void common_speculative_begin(
         common_speculative * spec,
         llama_seq_id seq_id,
@@ -3171,6 +3200,7 @@ void common_speculative_end(common_speculative * spec, llama_seq_id seq_id) {
     GGML_ASSERT(seq_id >= 0 && seq_id < (llama_seq_id) spec->dparams.size());
     spec->controller.end_request(seq_id);
     common_speculative_trace_shadow_events(spec, seq_id);
+    common_speculative_trace_hot_events(spec, seq_id);
     spec->impl_last[seq_id] = nullptr;
     spec->candidates[seq_id].clear();
     spec->selected_candidate_id[seq_id] = 0;
@@ -3261,6 +3291,7 @@ static void common_speculative_trace_decision(
         return;
     }
 
+    static const char * hot_transition_names[] = { "none", "entry", "promotion", "retention", "rollback", "reset", "expiration" };
     auto & out = *spec->trace;
     out << "{\"event\":\"decision\",\"seq_id\":" << seq_id
         << ",\"selected_index\":" << selection.candidate_index
@@ -3275,6 +3306,12 @@ static void common_speculative_trace_decision(
         << ",\"challenger_failure_streak\":" << (uint32_t) selection.challenger_failure_streak
         << ",\"unbudgeted_prefix_length\":" << selection.unbudgeted_prefix_length
         << ",\"budget_limited\":" << (selection.budget_limited ? "true" : "false")
+        << ",\"hot_key\":" << selection.hot_key
+        << ",\"hot_rung\":" << selection.hot_rung
+        << ",\"hot_requested_length\":" << selection.hot_requested_length
+        << ",\"hot_actual_length\":" << selection.prefix_length
+        << ",\"hot_applied\":" << (selection.hot_applied ? "true" : "false")
+        << ",\"hot_transition_reason\":\"" << hot_transition_names[selection.hot_transition_reason] << "\""
         << ",\"candidates\":[";
     for (size_t i = 0; i < candidates.size(); ++i) {
         if (i > 0) {
@@ -3586,6 +3623,7 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
 
         common_speculative_trace_decision(spec, seq_id, candidates, selection);
         common_speculative_trace_shadow_events(spec, seq_id);
+        common_speculative_trace_hot_events(spec, seq_id);
         if (selection.candidate_index >= 0) {
             auto & candidate = candidates[selection.candidate_index];
             candidate.tokens.resize(std::min<size_t>(selection.prefix_length, candidate.tokens.size()));
@@ -3776,6 +3814,7 @@ static void common_speculative_accept_impl(
             spec->verification_time_us[seq_id],
             0,
             seq_id);
+    common_speculative_trace_hot_events(spec, seq_id);
 
     if (spec->trace) {
         auto & out = *spec->trace;
@@ -3860,7 +3899,9 @@ common_speculative_controller_metrics common_speculative_get_controller_metrics(
     result.namespace_evictions = spec->controller.process_namespace_evictions();
     result.namespace_fallbacks = spec->controller.process_namespace_fallbacks();
     result.resident_namespaces = spec->controller.process_namespace_count();
+    result.active_hot_entries = spec->controller.active_hot_entries();
     result.shadow = spec->controller.shadow_metrics();
+    result.hot = spec->controller.hot_metrics();
     return result;
 }
 

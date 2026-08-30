@@ -1626,10 +1626,22 @@ std::string server_task_result_metrics::to_metrics() {
             { "spec_controller_trusted_decisions_total", "Controller: Decisions that selected a trusted n-gram", (double) controller.shadow.trusted_decisions },
             { "spec_controller_admission_no_evidence_total", "Controller: N-gram admissions rejected for insufficient evidence", (double) controller.shadow.rejected_no_evidence },
             { "spec_controller_admission_confidence_total", "Controller: N-gram admissions rejected by confidence bounds", (double) controller.shadow.rejected_confidence },
+            { "spec_controller_hot_entries_total", "Controller: Hot n-gram regions entered", (double) controller.hot.entries },
+            { "spec_controller_hot_promotions_24_total", "Controller: Hot n-gram promotions to 24 tokens", (double) controller.hot.promotions_24 },
+            { "spec_controller_hot_promotions_32_total", "Controller: Hot n-gram promotions to 32 tokens", (double) controller.hot.promotions_32 },
+            { "spec_controller_hot_promotions_48_total", "Controller: Hot n-gram promotions to 48 tokens", (double) controller.hot.promotions_48 },
+            { "spec_controller_hot_full_matches_total", "Controller: Fully accepted hot n-gram drafts", (double) controller.hot.full_matches },
+            { "spec_controller_hot_retained_total", "Controller: Hot n-gram rungs retained", (double) controller.hot.retained },
+            { "spec_controller_hot_rollbacks_total", "Controller: Hot n-gram rung rollbacks", (double) controller.hot.rollbacks },
+            { "spec_controller_hot_resets_total", "Controller: Hot n-gram regions reset to 16 tokens", (double) controller.hot.resets },
+            { "spec_controller_hot_expirations_total", "Controller: Inactive hot n-gram regions expired", (double) controller.hot.expirations },
+            { "spec_controller_hot_selected_tokens_total", "Controller: N-gram extension tokens selected by active hot regions", (double) controller.hot.selected_tokens },
+            { "spec_controller_hot_accepted_tokens_total", "Controller: N-gram extension tokens accepted from active hot regions", (double) controller.hot.accepted_tokens },
         };
         add_items("counter", controller_counters);
         add_items("gauge", {
             { "spec_controller_resident_namespaces", "Controller: Resident process-learning namespaces", (double) controller.resident_namespaces },
+            { "spec_controller_active_hot_entries", "Controller: Active request-local hot n-gram regions", (double) controller.active_hot_entries },
         });
 
         const auto escape_label = [](const std::string & value) {
