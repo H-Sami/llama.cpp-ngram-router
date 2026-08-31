@@ -1,0 +1,1658 @@
+{
+  "config_aggregates": [
+    {
+      "cold_tokens_per_second": 45.302758717202515,
+      "config": "frozen_current",
+      "runs": 12,
+      "warm_tokens_per_second": 46.68111035139892,
+      "weighted_tokens_per_second": 45.98160743430629
+    },
+    {
+      "cold_tokens_per_second": 44.08608181650661,
+      "config": "mtp",
+      "runs": 12,
+      "warm_tokens_per_second": 43.97849739739687,
+      "weighted_tokens_per_second": 44.03222389149986
+    },
+    {
+      "cold_tokens_per_second": 48.802045125569705,
+      "config": "retrieval_v2",
+      "runs": 12,
+      "warm_tokens_per_second": 49.730090975977696,
+      "weighted_tokens_per_second": 49.26169755230216
+    }
+  ],
+  "correctness": {
+    "comparisons": 24,
+    "mismatches": [],
+    "missing_reference": [],
+    "passed": true,
+    "reference": "mtp",
+    "within_config_instability": []
+  },
+  "groups": [
+    {
+      "acceptance_rate": 0.3961904761904762,
+      "accepted_tokens": 208.0,
+      "config": "frozen_current",
+      "draft_tokens": 525.0,
+      "max_tokens_per_second": 40.71383721582495,
+      "median_tokens_per_second": 38.687001859077256,
+      "median_wall_ms": 3948.6473035003655,
+      "min_tokens_per_second": 36.66016650232955,
+      "runs": 2,
+      "workload": "agent_tool_loop"
+    },
+    {
+      "acceptance_rate": 0.9278846153846154,
+      "accepted_tokens": 193.0,
+      "config": "frozen_current",
+      "draft_tokens": 208.0,
+      "max_tokens_per_second": 75.5777012339899,
+      "median_tokens_per_second": 71.2683878053538,
+      "median_wall_ms": 2036.05497450053,
+      "min_tokens_per_second": 66.95907437671768,
+      "runs": 2,
+      "workload": "code_rewrite"
+    },
+    {
+      "acceptance_rate": 0.6666666666666666,
+      "accepted_tokens": 52.0,
+      "config": "frozen_current",
+      "draft_tokens": 78.0,
+      "max_tokens_per_second": 37.09551619837541,
+      "median_tokens_per_second": 37.03970651518637,
+      "median_wall_ms": 1400.6142315001853,
+      "min_tokens_per_second": 36.98389683199733,
+      "runs": 2,
+      "workload": "json_schema"
+    },
+    {
+      "acceptance_rate": 0.7005649717514124,
+      "accepted_tokens": 124.0,
+      "config": "frozen_current",
+      "draft_tokens": 177.0,
+      "max_tokens_per_second": 55.9262264123479,
+      "median_tokens_per_second": 52.80981247534062,
+      "median_wall_ms": 1846.7991849997816,
+      "min_tokens_per_second": 49.69339853833335,
+      "runs": 2,
+      "workload": "near_match_trap"
+    },
+    {
+      "acceptance_rate": 0.5838150289017341,
+      "accepted_tokens": 202.0,
+      "config": "frozen_current",
+      "draft_tokens": 346.0,
+      "max_tokens_per_second": 34.950992773057926,
+      "median_tokens_per_second": 34.92033831980365,
+      "median_wall_ms": 4969.104232000063,
+      "min_tokens_per_second": 34.889683866549376,
+      "runs": 2,
+      "workload": "novel_reasoning"
+    },
+    {
+      "acceptance_rate": 0.5765765765765766,
+      "accepted_tokens": 128.0,
+      "config": "frozen_current",
+      "draft_tokens": 222.0,
+      "max_tokens_per_second": 84.46159953377197,
+      "median_tokens_per_second": 81.84645995054419,
+      "median_wall_ms": 1479.1600714997912,
+      "min_tokens_per_second": 79.2313203673164,
+      "runs": 2,
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "acceptance_rate": 0.8828828828828829,
+      "accepted_tokens": 196.0,
+      "config": "mtp",
+      "draft_tokens": 222.0,
+      "max_tokens_per_second": 47.06422104704993,
+      "median_tokens_per_second": 47.04884067374984,
+      "median_wall_ms": 3314.176520500041,
+      "min_tokens_per_second": 47.03346030044975,
+      "runs": 2,
+      "workload": "agent_tool_loop"
+    },
+    {
+      "acceptance_rate": 0.9885057471264368,
+      "accepted_tokens": 172.0,
+      "config": "mtp",
+      "draft_tokens": 174.0,
+      "max_tokens_per_second": 50.261694406229246,
+      "median_tokens_per_second": 50.22717936306488,
+      "median_wall_ms": 2690.192138999919,
+      "min_tokens_per_second": 50.19266431990051,
+      "runs": 2,
+      "workload": "code_rewrite"
+    },
+    {
+      "acceptance_rate": 0.6666666666666666,
+      "accepted_tokens": 52.0,
+      "config": "mtp",
+      "draft_tokens": 78.0,
+      "max_tokens_per_second": 37.63127525637512,
+      "median_tokens_per_second": 37.461151039570694,
+      "median_wall_ms": 1379.3762219997916,
+      "min_tokens_per_second": 37.29102682276627,
+      "runs": 2,
+      "workload": "json_schema"
+    },
+    {
+      "acceptance_rate": 0.9473684210526315,
+      "accepted_tokens": 108.0,
+      "config": "mtp",
+      "draft_tokens": 114.0,
+      "max_tokens_per_second": 49.560607871039224,
+      "median_tokens_per_second": 49.53353457120292,
+      "median_wall_ms": 1912.8340550005305,
+      "min_tokens_per_second": 49.50646127136662,
+      "runs": 2,
+      "workload": "near_match_trap"
+    },
+    {
+      "acceptance_rate": 0.5838150289017341,
+      "accepted_tokens": 202.0,
+      "config": "mtp",
+      "draft_tokens": 346.0,
+      "max_tokens_per_second": 35.52143115175895,
+      "median_tokens_per_second": 35.47330508294145,
+      "median_wall_ms": 4903.705952000109,
+      "min_tokens_per_second": 35.425179014123955,
+      "runs": 2,
+      "workload": "novel_reasoning"
+    },
+    {
+      "acceptance_rate": 0.9629629629629629,
+      "accepted_tokens": 104.0,
+      "config": "mtp",
+      "draft_tokens": 108.0,
+      "max_tokens_per_second": 50.20865281577298,
+      "median_tokens_per_second": 50.122178432295335,
+      "median_wall_ms": 2013.6425144996792,
+      "min_tokens_per_second": 50.03570404881769,
+      "runs": 2,
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "acceptance_rate": 0.8936170212765957,
+      "accepted_tokens": 210.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 235.0,
+      "max_tokens_per_second": 50.104737458598635,
+      "median_tokens_per_second": 49.788507421714044,
+      "median_wall_ms": 3160.269693000373,
+      "min_tokens_per_second": 49.472277384829454,
+      "runs": 2,
+      "workload": "agent_tool_loop"
+    },
+    {
+      "acceptance_rate": 0.8942307692307693,
+      "accepted_tokens": 186.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 208.0,
+      "max_tokens_per_second": 64.8265860139796,
+      "median_tokens_per_second": 62.08742897755725,
+      "median_wall_ms": 2265.3332525001133,
+      "min_tokens_per_second": 59.34827194113492,
+      "runs": 2,
+      "workload": "code_rewrite"
+    },
+    {
+      "acceptance_rate": 0.6666666666666666,
+      "accepted_tokens": 52.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 78.0,
+      "max_tokens_per_second": 37.02799981391056,
+      "median_tokens_per_second": 37.01896920294084,
+      "median_wall_ms": 1397.018922999905,
+      "min_tokens_per_second": 37.00993859197112,
+      "runs": 2,
+      "workload": "json_schema"
+    },
+    {
+      "acceptance_rate": 0.9191176470588235,
+      "accepted_tokens": 125.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 136.0,
+      "max_tokens_per_second": 68.97385796298465,
+      "median_tokens_per_second": 68.52051500254653,
+      "median_wall_ms": 1510.2336765003201,
+      "min_tokens_per_second": 68.06717204210841,
+      "runs": 2,
+      "workload": "near_match_trap"
+    },
+    {
+      "acceptance_rate": 0.5838150289017341,
+      "accepted_tokens": 202.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 346.0,
+      "max_tokens_per_second": 34.901447312533676,
+      "median_tokens_per_second": 34.87248297345659,
+      "median_wall_ms": 4972.710675499911,
+      "min_tokens_per_second": 34.84351863437951,
+      "runs": 2,
+      "workload": "novel_reasoning"
+    },
+    {
+      "acceptance_rate": 0.5925925925925926,
+      "accepted_tokens": 128.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 216.0,
+      "max_tokens_per_second": 83.57021509779506,
+      "median_tokens_per_second": 81.02356751782067,
+      "median_wall_ms": 1484.1867545005698,
+      "min_tokens_per_second": 78.47691993784628,
+      "runs": 2,
+      "workload": "rolling_long_repeat"
+    }
+  ],
+  "server_scope": "config",
+  "trace_runs": [
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 58,
+          "fused:draft-mtp+ngram-cache": 1
+        },
+        "candidate_tokens": {
+          "draft-mtp": 173,
+          "fused:draft-mtp+ngram-cache": 11
+        },
+        "coverage_cycles": {
+          "draft-mtp": 58,
+          "fused:draft-mtp+ngram-cache": 1
+        },
+        "cycles": 58,
+        "proposal_time_us": {
+          "draft-mtp": 725874,
+          "fused:draft-mtp+ngram-cache": 12857
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 101
+        },
+        "selected_cycles": {
+          "draft-mtp": 58
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 173
+        }
+      },
+      "workload": "novel_reasoning"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+map-k-fast": 3,
+          "fused:draft-mtp+map-k-strict": 3,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 3,
+          "fused:draft-mtp+ngram-map-k": 3,
+          "fused:draft-mtp+ngram-map-k4v": 3,
+          "fused:draft-mtp+ngram-mod": 3,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "map-k-fast": 4,
+          "map-k-strict": 3,
+          "mod-long": 4,
+          "mod-short": 4,
+          "ngram-cache": 4,
+          "ngram-map-k": 3,
+          "ngram-map-k4v": 3,
+          "ngram-mod": 4,
+          "ngram-simple": 4,
+          "simple-fast": 4
+        },
+        "candidate_tokens": {
+          "draft-mtp": 18,
+          "fused:draft-mtp+map-k-fast": 57,
+          "fused:draft-mtp+map-k-strict": 105,
+          "fused:draft-mtp+mod-long": 153,
+          "fused:draft-mtp+mod-short": 105,
+          "fused:draft-mtp+ngram-cache": 33,
+          "fused:draft-mtp+ngram-map-k": 153,
+          "fused:draft-mtp+ngram-map-k4v": 153,
+          "fused:draft-mtp+ngram-mod": 105,
+          "fused:draft-mtp+ngram-simple": 153,
+          "fused:draft-mtp+simple-fast": 105,
+          "map-k-fast": 64,
+          "map-k-strict": 96,
+          "mod-long": 192,
+          "mod-short": 128,
+          "ngram-cache": 32,
+          "ngram-map-k": 144,
+          "ngram-map-k4v": 144,
+          "ngram-mod": 128,
+          "ngram-simple": 192,
+          "simple-fast": 128
+        },
+        "coverage_cycles": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+map-k-fast": 3,
+          "fused:draft-mtp+map-k-strict": 3,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 3,
+          "fused:draft-mtp+ngram-map-k": 3,
+          "fused:draft-mtp+ngram-map-k4v": 3,
+          "fused:draft-mtp+ngram-mod": 3,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "map-k-fast": 4,
+          "map-k-strict": 3,
+          "mod-long": 4,
+          "mod-short": 4,
+          "ngram-cache": 4,
+          "ngram-map-k": 3,
+          "ngram-map-k4v": 3,
+          "ngram-mod": 4,
+          "ngram-simple": 4,
+          "simple-fast": 4
+        },
+        "cycles": 6,
+        "proposal_time_us": {
+          "draft-mtp": 74274,
+          "fused:draft-mtp+map-k-fast": 36963,
+          "fused:draft-mtp+map-k-strict": 36964,
+          "fused:draft-mtp+mod-long": 36966,
+          "fused:draft-mtp+mod-short": 36966,
+          "fused:draft-mtp+ngram-cache": 36969,
+          "fused:draft-mtp+ngram-map-k": 36964,
+          "fused:draft-mtp+ngram-map-k4v": 36964,
+          "fused:draft-mtp+ngram-mod": 36968,
+          "fused:draft-mtp+ngram-simple": 36964,
+          "fused:draft-mtp+simple-fast": 36964,
+          "map-k-fast": 5,
+          "map-k-strict": 2,
+          "mod-long": 14,
+          "mod-short": 14,
+          "ngram-cache": 98,
+          "ngram-map-k": 3,
+          "ngram-map-k4v": 4,
+          "ngram-mod": 10,
+          "ngram-simple": 1,
+          "simple-fast": 2
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-simple": 51,
+          "ngram-simple": 2
+        },
+        "selected_cycles": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-simple": 1,
+          "ngram-simple": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-simple": 51,
+          "ngram-simple": 48
+        }
+      },
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 10,
+          "fused:draft-mtp+map-k-fast": 2,
+          "fused:draft-mtp+map-k-strict": 1,
+          "fused:draft-mtp+mod-long": 2,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 7,
+          "fused:draft-mtp+ngram-mod": 1,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 4,
+          "map-k-fast": 1,
+          "map-k-strict": 1,
+          "mod-long": 2,
+          "mod-short": 2,
+          "ngram-cache": 6,
+          "ngram-simple": 3,
+          "simple-fast": 3
+        },
+        "candidate_tokens": {
+          "draft-mtp": 30,
+          "fused:draft-mtp+map-k-fast": 38,
+          "fused:draft-mtp+map-k-strict": 35,
+          "fused:draft-mtp+mod-long": 87,
+          "fused:draft-mtp+mod-short": 103,
+          "fused:draft-mtp+ngram-cache": 70,
+          "fused:draft-mtp+ngram-mod": 35,
+          "fused:draft-mtp+ngram-simple": 137,
+          "fused:draft-mtp+simple-fast": 140,
+          "map-k-fast": 16,
+          "map-k-strict": 32,
+          "mod-long": 84,
+          "mod-short": 64,
+          "ngram-cache": 48,
+          "ngram-simple": 128,
+          "simple-fast": 96
+        },
+        "coverage_cycles": {
+          "draft-mtp": 10,
+          "fused:draft-mtp+map-k-fast": 2,
+          "fused:draft-mtp+map-k-strict": 1,
+          "fused:draft-mtp+mod-long": 2,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 7,
+          "fused:draft-mtp+ngram-mod": 1,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 4,
+          "map-k-fast": 1,
+          "map-k-strict": 1,
+          "mod-long": 2,
+          "mod-short": 2,
+          "ngram-cache": 6,
+          "ngram-simple": 3,
+          "simple-fast": 3
+        },
+        "cycles": 10,
+        "proposal_time_us": {
+          "draft-mtp": 123144,
+          "fused:draft-mtp+map-k-fast": 24521,
+          "fused:draft-mtp+map-k-strict": 12259,
+          "fused:draft-mtp+mod-long": 24501,
+          "fused:draft-mtp+mod-short": 36821,
+          "fused:draft-mtp+ngram-cache": 85805,
+          "fused:draft-mtp+ngram-mod": 12242,
+          "fused:draft-mtp+ngram-simple": 36816,
+          "fused:draft-mtp+simple-fast": 49077,
+          "map-k-fast": 2,
+          "map-k-strict": 2,
+          "mod-long": 6,
+          "mod-short": 7,
+          "ngram-cache": 41,
+          "ngram-simple": 2,
+          "simple-fast": 1
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 15,
+          "fused:draft-mtp+map-k-fast": 16,
+          "fused:draft-mtp+ngram-simple": 11,
+          "ngram-simple": 22
+        },
+        "selected_cycles": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+map-k-fast": 1,
+          "fused:draft-mtp+ngram-simple": 1,
+          "ngram-simple": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 18,
+          "fused:draft-mtp+map-k-fast": 16,
+          "fused:draft-mtp+ngram-simple": 39,
+          "ngram-simple": 32
+        }
+      },
+      "workload": "near_match_trap"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 26,
+          "fused:draft-mtp+map-k-fast": 6,
+          "fused:draft-mtp+map-k-strict": 2,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 19,
+          "fused:draft-mtp+ngram-map-k": 2,
+          "fused:draft-mtp+ngram-map-k4v": 1,
+          "fused:draft-mtp+ngram-simple": 5,
+          "fused:draft-mtp+simple-fast": 10,
+          "map-k-fast": 6,
+          "map-k-strict": 2,
+          "mod-short": 6,
+          "ngram-cache": 17,
+          "ngram-map-k": 2,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 7,
+          "simple-fast": 9
+        },
+        "candidate_tokens": {
+          "draft-mtp": 78,
+          "fused:draft-mtp+map-k-fast": 114,
+          "fused:draft-mtp+map-k-strict": 70,
+          "fused:draft-mtp+mod-short": 130,
+          "fused:draft-mtp+ngram-cache": 192,
+          "fused:draft-mtp+ngram-map-k": 102,
+          "fused:draft-mtp+ngram-map-k4v": 51,
+          "fused:draft-mtp+ngram-simple": 186,
+          "fused:draft-mtp+simple-fast": 307,
+          "map-k-fast": 96,
+          "map-k-strict": 64,
+          "mod-short": 170,
+          "ngram-cache": 106,
+          "ngram-map-k": 96,
+          "ngram-map-k4v": 48,
+          "ngram-simple": 221,
+          "simple-fast": 244
+        },
+        "coverage_cycles": {
+          "draft-mtp": 26,
+          "fused:draft-mtp+map-k-fast": 6,
+          "fused:draft-mtp+map-k-strict": 2,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 19,
+          "fused:draft-mtp+ngram-map-k": 2,
+          "fused:draft-mtp+ngram-map-k4v": 1,
+          "fused:draft-mtp+ngram-simple": 5,
+          "fused:draft-mtp+simple-fast": 10,
+          "map-k-fast": 6,
+          "map-k-strict": 2,
+          "mod-short": 6,
+          "ngram-cache": 17,
+          "ngram-map-k": 2,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 7,
+          "simple-fast": 9
+        },
+        "cycles": 26,
+        "proposal_time_us": {
+          "draft-mtp": 320997,
+          "fused:draft-mtp+map-k-fast": 73752,
+          "fused:draft-mtp+map-k-strict": 24617,
+          "fused:draft-mtp+mod-short": 49255,
+          "fused:draft-mtp+ngram-cache": 235075,
+          "fused:draft-mtp+ngram-map-k": 24617,
+          "fused:draft-mtp+ngram-map-k4v": 12298,
+          "fused:draft-mtp+ngram-simple": 61582,
+          "fused:draft-mtp+simple-fast": 122958,
+          "map-k-fast": 7,
+          "map-k-strict": 2,
+          "mod-short": 14,
+          "ngram-cache": 175,
+          "ngram-map-k": 2,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 3,
+          "simple-fast": 4
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 43,
+          "fused:draft-mtp+ngram-cache": 22,
+          "fused:draft-mtp+ngram-map-k": 25,
+          "fused:draft-mtp+simple-fast": 8,
+          "map-k-fast": 7,
+          "ngram-cache": 2,
+          "ngram-simple": 3
+        },
+        "selected_cycles": {
+          "draft-mtp": 17,
+          "fused:draft-mtp+ngram-cache": 2,
+          "fused:draft-mtp+ngram-map-k": 2,
+          "fused:draft-mtp+simple-fast": 1,
+          "map-k-fast": 2,
+          "ngram-cache": 1,
+          "ngram-simple": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 51,
+          "fused:draft-mtp+ngram-cache": 22,
+          "fused:draft-mtp+ngram-map-k": 102,
+          "fused:draft-mtp+simple-fast": 11,
+          "map-k-fast": 27,
+          "ngram-cache": 8,
+          "ngram-simple": 48
+        }
+      },
+      "workload": "agent_tool_loop"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 17,
+          "fused:draft-mtp+mod-long": 1,
+          "fused:draft-mtp+mod-short": 2,
+          "fused:draft-mtp+ngram-cache": 4,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "mod-long": 1,
+          "mod-short": 2,
+          "ngram-cache": 5,
+          "ngram-simple": 2,
+          "simple-fast": 3
+        },
+        "candidate_tokens": {
+          "draft-mtp": 51,
+          "fused:draft-mtp+mod-long": 51,
+          "fused:draft-mtp+mod-short": 70,
+          "fused:draft-mtp+ngram-cache": 36,
+          "fused:draft-mtp+ngram-simple": 153,
+          "fused:draft-mtp+simple-fast": 105,
+          "mod-long": 48,
+          "mod-short": 64,
+          "ngram-cache": 24,
+          "ngram-simple": 96,
+          "simple-fast": 96
+        },
+        "coverage_cycles": {
+          "draft-mtp": 17,
+          "fused:draft-mtp+mod-long": 1,
+          "fused:draft-mtp+mod-short": 2,
+          "fused:draft-mtp+ngram-cache": 4,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "mod-long": 1,
+          "mod-short": 2,
+          "ngram-cache": 5,
+          "ngram-simple": 2,
+          "simple-fast": 3
+        },
+        "cycles": 17,
+        "proposal_time_us": {
+          "draft-mtp": 208437,
+          "fused:draft-mtp+mod-long": 12279,
+          "fused:draft-mtp+mod-short": 24550,
+          "fused:draft-mtp+ngram-cache": 49056,
+          "fused:draft-mtp+ngram-simple": 36777,
+          "fused:draft-mtp+simple-fast": 36777,
+          "mod-long": 4,
+          "mod-short": 5,
+          "ngram-cache": 119,
+          "ngram-simple": 0,
+          "simple-fast": 2
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 48,
+          "fused:draft-mtp+ngram-simple": 48
+        },
+        "selected_cycles": {
+          "draft-mtp": 16,
+          "fused:draft-mtp+ngram-simple": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 48,
+          "fused:draft-mtp+ngram-simple": 51
+        }
+      },
+      "workload": "code_rewrite"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 13,
+          "ngram-cache": 1
+        },
+        "candidate_tokens": {
+          "draft-mtp": 39,
+          "ngram-cache": 8
+        },
+        "coverage_cycles": {
+          "draft-mtp": 13,
+          "ngram-cache": 1
+        },
+        "cycles": 13,
+        "proposal_time_us": {
+          "draft-mtp": 163602,
+          "ngram-cache": 8
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 26
+        },
+        "selected_cycles": {
+          "draft-mtp": 13
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 39
+        }
+      },
+      "workload": "json_schema"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 58,
+          "fused:draft-mtp+ngram-cache": 1
+        },
+        "candidate_tokens": {
+          "draft-mtp": 173,
+          "fused:draft-mtp+ngram-cache": 11
+        },
+        "coverage_cycles": {
+          "draft-mtp": 58,
+          "fused:draft-mtp+ngram-cache": 1
+        },
+        "cycles": 58,
+        "proposal_time_us": {
+          "draft-mtp": 728616,
+          "fused:draft-mtp+ngram-cache": 12893
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 101
+        },
+        "selected_cycles": {
+          "draft-mtp": 58
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 173
+        }
+      },
+      "workload": "novel_reasoning"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+map-k-fast": 3,
+          "fused:draft-mtp+map-k-strict": 3,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 3,
+          "fused:draft-mtp+ngram-map-k": 3,
+          "fused:draft-mtp+ngram-map-k4v": 3,
+          "fused:draft-mtp+ngram-mod": 3,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "map-k-fast": 4,
+          "map-k-strict": 3,
+          "mod-long": 4,
+          "mod-short": 4,
+          "ngram-cache": 4,
+          "ngram-map-k": 3,
+          "ngram-map-k4v": 3,
+          "ngram-mod": 4,
+          "ngram-simple": 4,
+          "simple-fast": 4
+        },
+        "candidate_tokens": {
+          "draft-mtp": 18,
+          "fused:draft-mtp+map-k-fast": 57,
+          "fused:draft-mtp+map-k-strict": 105,
+          "fused:draft-mtp+mod-long": 153,
+          "fused:draft-mtp+mod-short": 105,
+          "fused:draft-mtp+ngram-cache": 33,
+          "fused:draft-mtp+ngram-map-k": 153,
+          "fused:draft-mtp+ngram-map-k4v": 153,
+          "fused:draft-mtp+ngram-mod": 105,
+          "fused:draft-mtp+ngram-simple": 153,
+          "fused:draft-mtp+simple-fast": 105,
+          "map-k-fast": 64,
+          "map-k-strict": 96,
+          "mod-long": 192,
+          "mod-short": 128,
+          "ngram-cache": 32,
+          "ngram-map-k": 144,
+          "ngram-map-k4v": 144,
+          "ngram-mod": 128,
+          "ngram-simple": 192,
+          "simple-fast": 128
+        },
+        "coverage_cycles": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+map-k-fast": 3,
+          "fused:draft-mtp+map-k-strict": 3,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 3,
+          "fused:draft-mtp+ngram-map-k": 3,
+          "fused:draft-mtp+ngram-map-k4v": 3,
+          "fused:draft-mtp+ngram-mod": 3,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "map-k-fast": 4,
+          "map-k-strict": 3,
+          "mod-long": 4,
+          "mod-short": 4,
+          "ngram-cache": 4,
+          "ngram-map-k": 3,
+          "ngram-map-k4v": 3,
+          "ngram-mod": 4,
+          "ngram-simple": 4,
+          "simple-fast": 4
+        },
+        "cycles": 6,
+        "proposal_time_us": {
+          "draft-mtp": 74210,
+          "fused:draft-mtp+map-k-fast": 36997,
+          "fused:draft-mtp+map-k-strict": 36999,
+          "fused:draft-mtp+mod-long": 37001,
+          "fused:draft-mtp+mod-short": 36998,
+          "fused:draft-mtp+ngram-cache": 37004,
+          "fused:draft-mtp+ngram-map-k": 36998,
+          "fused:draft-mtp+ngram-map-k4v": 37000,
+          "fused:draft-mtp+ngram-mod": 37000,
+          "fused:draft-mtp+ngram-simple": 36997,
+          "fused:draft-mtp+simple-fast": 36997,
+          "map-k-fast": 5,
+          "map-k-strict": 4,
+          "mod-long": 12,
+          "mod-short": 11,
+          "ngram-cache": 114,
+          "ngram-map-k": 5,
+          "ngram-map-k4v": 4,
+          "ngram-mod": 11,
+          "ngram-simple": 0,
+          "simple-fast": 4
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-simple": 51,
+          "ngram-simple": 2
+        },
+        "selected_cycles": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-simple": 1,
+          "ngram-simple": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-simple": 51,
+          "ngram-simple": 48
+        }
+      },
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 10,
+          "fused:draft-mtp+map-k-fast": 2,
+          "fused:draft-mtp+map-k-strict": 1,
+          "fused:draft-mtp+mod-long": 2,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 7,
+          "fused:draft-mtp+ngram-mod": 1,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 4,
+          "map-k-fast": 1,
+          "map-k-strict": 1,
+          "mod-long": 2,
+          "mod-short": 2,
+          "ngram-cache": 6,
+          "ngram-simple": 3,
+          "simple-fast": 3
+        },
+        "candidate_tokens": {
+          "draft-mtp": 30,
+          "fused:draft-mtp+map-k-fast": 38,
+          "fused:draft-mtp+map-k-strict": 35,
+          "fused:draft-mtp+mod-long": 87,
+          "fused:draft-mtp+mod-short": 103,
+          "fused:draft-mtp+ngram-cache": 70,
+          "fused:draft-mtp+ngram-mod": 35,
+          "fused:draft-mtp+ngram-simple": 137,
+          "fused:draft-mtp+simple-fast": 140,
+          "map-k-fast": 16,
+          "map-k-strict": 32,
+          "mod-long": 84,
+          "mod-short": 64,
+          "ngram-cache": 48,
+          "ngram-simple": 128,
+          "simple-fast": 96
+        },
+        "coverage_cycles": {
+          "draft-mtp": 10,
+          "fused:draft-mtp+map-k-fast": 2,
+          "fused:draft-mtp+map-k-strict": 1,
+          "fused:draft-mtp+mod-long": 2,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 7,
+          "fused:draft-mtp+ngram-mod": 1,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 4,
+          "map-k-fast": 1,
+          "map-k-strict": 1,
+          "mod-long": 2,
+          "mod-short": 2,
+          "ngram-cache": 6,
+          "ngram-simple": 3,
+          "simple-fast": 3
+        },
+        "cycles": 10,
+        "proposal_time_us": {
+          "draft-mtp": 123237,
+          "fused:draft-mtp+map-k-fast": 24558,
+          "fused:draft-mtp+map-k-strict": 12285,
+          "fused:draft-mtp+mod-long": 24593,
+          "fused:draft-mtp+mod-short": 36927,
+          "fused:draft-mtp+ngram-cache": 86025,
+          "fused:draft-mtp+ngram-mod": 12309,
+          "fused:draft-mtp+ngram-simple": 36925,
+          "fused:draft-mtp+simple-fast": 49197,
+          "map-k-fast": 1,
+          "map-k-strict": 2,
+          "mod-long": 6,
+          "mod-short": 8,
+          "ngram-cache": 47,
+          "ngram-simple": 3,
+          "simple-fast": 3
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 15,
+          "fused:draft-mtp+map-k-fast": 16,
+          "fused:draft-mtp+ngram-cache": 6,
+          "fused:draft-mtp+simple-fast": 16,
+          "map-k-strict": 10
+        },
+        "selected_cycles": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+map-k-fast": 1,
+          "fused:draft-mtp+ngram-cache": 1,
+          "fused:draft-mtp+simple-fast": 1,
+          "map-k-strict": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 18,
+          "fused:draft-mtp+map-k-fast": 16,
+          "fused:draft-mtp+ngram-cache": 11,
+          "fused:draft-mtp+simple-fast": 16,
+          "map-k-strict": 11
+        }
+      },
+      "workload": "near_match_trap"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 25,
+          "fused:draft-mtp+map-k-fast": 5,
+          "fused:draft-mtp+map-k-strict": 2,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 18,
+          "fused:draft-mtp+ngram-map-k": 2,
+          "fused:draft-mtp+ngram-map-k4v": 1,
+          "fused:draft-mtp+ngram-simple": 5,
+          "fused:draft-mtp+simple-fast": 9,
+          "map-k-fast": 6,
+          "map-k-strict": 2,
+          "mod-short": 6,
+          "ngram-cache": 16,
+          "ngram-map-k": 2,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 7,
+          "simple-fast": 9
+        },
+        "candidate_tokens": {
+          "draft-mtp": 75,
+          "fused:draft-mtp+map-k-fast": 95,
+          "fused:draft-mtp+map-k-strict": 70,
+          "fused:draft-mtp+mod-short": 130,
+          "fused:draft-mtp+ngram-cache": 181,
+          "fused:draft-mtp+ngram-map-k": 102,
+          "fused:draft-mtp+ngram-map-k4v": 51,
+          "fused:draft-mtp+ngram-simple": 186,
+          "fused:draft-mtp+simple-fast": 278,
+          "map-k-fast": 96,
+          "map-k-strict": 64,
+          "mod-short": 170,
+          "ngram-cache": 98,
+          "ngram-map-k": 96,
+          "ngram-map-k4v": 48,
+          "ngram-simple": 221,
+          "simple-fast": 244
+        },
+        "coverage_cycles": {
+          "draft-mtp": 25,
+          "fused:draft-mtp+map-k-fast": 5,
+          "fused:draft-mtp+map-k-strict": 2,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 18,
+          "fused:draft-mtp+ngram-map-k": 2,
+          "fused:draft-mtp+ngram-map-k4v": 1,
+          "fused:draft-mtp+ngram-simple": 5,
+          "fused:draft-mtp+simple-fast": 9,
+          "map-k-fast": 6,
+          "map-k-strict": 2,
+          "mod-short": 6,
+          "ngram-cache": 16,
+          "ngram-map-k": 2,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 7,
+          "simple-fast": 9
+        },
+        "cycles": 25,
+        "proposal_time_us": {
+          "draft-mtp": 308626,
+          "fused:draft-mtp+map-k-fast": 61386,
+          "fused:draft-mtp+map-k-strict": 24631,
+          "fused:draft-mtp+mod-short": 49169,
+          "fused:draft-mtp+ngram-cache": 222717,
+          "fused:draft-mtp+ngram-map-k": 24631,
+          "fused:draft-mtp+ngram-map-k4v": 12321,
+          "fused:draft-mtp+ngram-simple": 61420,
+          "fused:draft-mtp+simple-fast": 110468,
+          "map-k-fast": 7,
+          "map-k-strict": 2,
+          "mod-short": 14,
+          "ngram-cache": 175,
+          "ngram-map-k": 2,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 6,
+          "simple-fast": 3
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 43,
+          "fused:draft-mtp+ngram-cache": 36,
+          "fused:draft-mtp+ngram-map-k": 25,
+          "map-k-fast": 3,
+          "ngram-simple": 3
+        },
+        "selected_cycles": {
+          "draft-mtp": 17,
+          "fused:draft-mtp+ngram-cache": 4,
+          "fused:draft-mtp+ngram-map-k": 2,
+          "map-k-fast": 1,
+          "ngram-simple": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 51,
+          "fused:draft-mtp+ngram-cache": 44,
+          "fused:draft-mtp+ngram-map-k": 102,
+          "map-k-fast": 11,
+          "ngram-simple": 48
+        }
+      },
+      "workload": "agent_tool_loop"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 16,
+          "fused:draft-mtp+mod-long": 1,
+          "fused:draft-mtp+mod-short": 2,
+          "fused:draft-mtp+ngram-cache": 4,
+          "fused:draft-mtp+ngram-mod": 1,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "mod-long": 1,
+          "mod-short": 2,
+          "ngram-cache": 5,
+          "ngram-mod": 1,
+          "ngram-simple": 2,
+          "simple-fast": 3
+        },
+        "candidate_tokens": {
+          "draft-mtp": 48,
+          "fused:draft-mtp+mod-long": 51,
+          "fused:draft-mtp+mod-short": 70,
+          "fused:draft-mtp+ngram-cache": 29,
+          "fused:draft-mtp+ngram-mod": 35,
+          "fused:draft-mtp+ngram-simple": 153,
+          "fused:draft-mtp+simple-fast": 105,
+          "mod-long": 48,
+          "mod-short": 64,
+          "ngram-cache": 27,
+          "ngram-mod": 32,
+          "ngram-simple": 96,
+          "simple-fast": 96
+        },
+        "coverage_cycles": {
+          "draft-mtp": 16,
+          "fused:draft-mtp+mod-long": 1,
+          "fused:draft-mtp+mod-short": 2,
+          "fused:draft-mtp+ngram-cache": 4,
+          "fused:draft-mtp+ngram-mod": 1,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "mod-long": 1,
+          "mod-short": 2,
+          "ngram-cache": 5,
+          "ngram-mod": 1,
+          "ngram-simple": 2,
+          "simple-fast": 3
+        },
+        "cycles": 16,
+        "proposal_time_us": {
+          "draft-mtp": 197510,
+          "fused:draft-mtp+mod-long": 12297,
+          "fused:draft-mtp+mod-short": 24631,
+          "fused:draft-mtp+ngram-cache": 49305,
+          "fused:draft-mtp+ngram-mod": 12297,
+          "fused:draft-mtp+ngram-simple": 36940,
+          "fused:draft-mtp+simple-fast": 36941,
+          "mod-long": 6,
+          "mod-short": 7,
+          "ngram-cache": 123,
+          "ngram-mod": 5,
+          "ngram-simple": 2,
+          "simple-fast": 1
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 42,
+          "fused:draft-mtp+ngram-simple": 40,
+          "fused:draft-mtp+simple-fast": 16
+        },
+        "selected_cycles": {
+          "draft-mtp": 14,
+          "fused:draft-mtp+ngram-simple": 1,
+          "fused:draft-mtp+simple-fast": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 42,
+          "fused:draft-mtp+ngram-simple": 51,
+          "fused:draft-mtp+simple-fast": 16
+        }
+      },
+      "workload": "code_rewrite"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 13,
+          "ngram-cache": 1
+        },
+        "candidate_tokens": {
+          "draft-mtp": 39,
+          "ngram-cache": 8
+        },
+        "coverage_cycles": {
+          "draft-mtp": 13,
+          "ngram-cache": 1
+        },
+        "cycles": 13,
+        "proposal_time_us": {
+          "draft-mtp": 162486,
+          "ngram-cache": 9
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 26
+        },
+        "selected_cycles": {
+          "draft-mtp": 13
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 39
+        }
+      },
+      "workload": "json_schema"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 58,
+          "ngram-retrieval": 1
+        },
+        "candidate_tokens": {
+          "draft-mtp": 173,
+          "ngram-retrieval": 48
+        },
+        "coverage_cycles": {
+          "draft-mtp": 58,
+          "ngram-retrieval": 1
+        },
+        "cycles": 58,
+        "proposal_time_us": {
+          "draft-mtp": 728992,
+          "ngram-retrieval": 11
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 101
+        },
+        "selected_cycles": {
+          "draft-mtp": 58
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 173
+        }
+      },
+      "workload": "novel_reasoning"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-retrieval": 4,
+          "ngram-retrieval": 6
+        },
+        "candidate_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-retrieval": 204,
+          "ngram-retrieval": 288
+        },
+        "coverage_cycles": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-retrieval": 4,
+          "ngram-retrieval": 6
+        },
+        "cycles": 6,
+        "proposal_time_us": {
+          "draft-mtp": 49468,
+          "fused:draft-mtp+ngram-retrieval": 49490,
+          "ngram-retrieval": 79
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 12,
+          "ngram-retrieval": 53
+        },
+        "selected_cycles": {
+          "draft-mtp": 4,
+          "ngram-retrieval": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 12,
+          "ngram-retrieval": 96
+        }
+      },
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 9,
+          "fused:draft-mtp+ngram-retrieval": 7,
+          "ngram-retrieval": 7
+        },
+        "candidate_tokens": {
+          "draft-mtp": 27,
+          "fused:draft-mtp+ngram-retrieval": 268,
+          "ngram-retrieval": 225
+        },
+        "coverage_cycles": {
+          "draft-mtp": 9,
+          "fused:draft-mtp+ngram-retrieval": 7,
+          "ngram-retrieval": 7
+        },
+        "cycles": 11,
+        "proposal_time_us": {
+          "draft-mtp": 111535,
+          "fused:draft-mtp+ngram-retrieval": 86326,
+          "ngram-retrieval": 84
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 18,
+          "fused:draft-mtp+ngram-retrieval": 24,
+          "ngram-retrieval": 20
+        },
+        "selected_cycles": {
+          "draft-mtp": 7,
+          "fused:draft-mtp+ngram-retrieval": 1,
+          "ngram-retrieval": 3
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 21,
+          "fused:draft-mtp+ngram-retrieval": 24,
+          "ngram-retrieval": 22
+        }
+      },
+      "workload": "near_match_trap"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 27,
+          "fused:draft-mtp+ngram-retrieval": 18,
+          "ngram-retrieval": 21
+        },
+        "candidate_tokens": {
+          "draft-mtp": 81,
+          "fused:draft-mtp+ngram-retrieval": 495,
+          "ngram-retrieval": 526
+        },
+        "coverage_cycles": {
+          "draft-mtp": 27,
+          "fused:draft-mtp+ngram-retrieval": 18,
+          "ngram-retrieval": 21
+        },
+        "cycles": 30,
+        "proposal_time_us": {
+          "draft-mtp": 335590,
+          "fused:draft-mtp+ngram-retrieval": 222673,
+          "ngram-retrieval": 334
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 67,
+          "fused:draft-mtp+ngram-retrieval": 29,
+          "ngram-retrieval": 10,
+          "ordinary": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 24,
+          "fused:draft-mtp+ngram-retrieval": 2,
+          "ngram-retrieval": 2,
+          "ordinary": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 72,
+          "fused:draft-mtp+ngram-retrieval": 32,
+          "ngram-retrieval": 11,
+          "ordinary": 0
+        }
+      },
+      "workload": "agent_tool_loop"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 17,
+          "fused:draft-mtp+ngram-retrieval": 9,
+          "ngram-retrieval": 12
+        },
+        "candidate_tokens": {
+          "draft-mtp": 51,
+          "fused:draft-mtp+ngram-retrieval": 459,
+          "ngram-retrieval": 539
+        },
+        "coverage_cycles": {
+          "draft-mtp": 17,
+          "fused:draft-mtp+ngram-retrieval": 9,
+          "ngram-retrieval": 12
+        },
+        "cycles": 20,
+        "proposal_time_us": {
+          "draft-mtp": 211854,
+          "fused:draft-mtp+ngram-retrieval": 112213,
+          "ngram-retrieval": 119
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 48,
+          "ngram-retrieval": 46,
+          "ordinary": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 16,
+          "ngram-retrieval": 2,
+          "ordinary": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 48,
+          "ngram-retrieval": 64,
+          "ordinary": 0
+        }
+      },
+      "workload": "code_rewrite"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 13
+        },
+        "candidate_tokens": {
+          "draft-mtp": 39
+        },
+        "coverage_cycles": {
+          "draft-mtp": 13
+        },
+        "cycles": 13,
+        "proposal_time_us": {
+          "draft-mtp": 162968
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 26
+        },
+        "selected_cycles": {
+          "draft-mtp": 13
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 39
+        }
+      },
+      "workload": "json_schema"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 58,
+          "ngram-retrieval": 1
+        },
+        "candidate_tokens": {
+          "draft-mtp": 173,
+          "ngram-retrieval": 48
+        },
+        "coverage_cycles": {
+          "draft-mtp": 58,
+          "ngram-retrieval": 1
+        },
+        "cycles": 58,
+        "proposal_time_us": {
+          "draft-mtp": 732380,
+          "ngram-retrieval": 12
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 101,
+          "ngram-retrieval": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 57,
+          "ngram-retrieval": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 170,
+          "ngram-retrieval": 3
+        }
+      },
+      "workload": "novel_reasoning"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-retrieval": 4,
+          "ngram-retrieval": 6
+        },
+        "candidate_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-retrieval": 204,
+          "ngram-retrieval": 288
+        },
+        "coverage_cycles": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-retrieval": 4,
+          "ngram-retrieval": 6
+        },
+        "cycles": 6,
+        "proposal_time_us": {
+          "draft-mtp": 50046,
+          "fused:draft-mtp+ngram-retrieval": 50070,
+          "ngram-retrieval": 88
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 12,
+          "ngram-retrieval": 53
+        },
+        "selected_cycles": {
+          "draft-mtp": 4,
+          "ngram-retrieval": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 12,
+          "ngram-retrieval": 96
+        }
+      },
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 8,
+          "fused:draft-mtp+ngram-retrieval": 6,
+          "ngram-retrieval": 6
+        },
+        "candidate_tokens": {
+          "draft-mtp": 24,
+          "fused:draft-mtp+ngram-retrieval": 234,
+          "ngram-retrieval": 194
+        },
+        "coverage_cycles": {
+          "draft-mtp": 8,
+          "fused:draft-mtp+ngram-retrieval": 6,
+          "ngram-retrieval": 6
+        },
+        "cycles": 10,
+        "proposal_time_us": {
+          "draft-mtp": 99627,
+          "fused:draft-mtp+ngram-retrieval": 74366,
+          "ngram-retrieval": 56
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-retrieval": 24,
+          "ngram-retrieval": 27
+        },
+        "selected_cycles": {
+          "draft-mtp": 5,
+          "fused:draft-mtp+ngram-retrieval": 1,
+          "ngram-retrieval": 4
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 15,
+          "fused:draft-mtp+ngram-retrieval": 24,
+          "ngram-retrieval": 30
+        }
+      },
+      "workload": "near_match_trap"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 25,
+          "fused:draft-mtp+ngram-retrieval": 15,
+          "ngram-retrieval": 19
+        },
+        "candidate_tokens": {
+          "draft-mtp": 75,
+          "fused:draft-mtp+ngram-retrieval": 427,
+          "ngram-retrieval": 443
+        },
+        "coverage_cycles": {
+          "draft-mtp": 25,
+          "fused:draft-mtp+ngram-retrieval": 15,
+          "ngram-retrieval": 19
+        },
+        "cycles": 30,
+        "proposal_time_us": {
+          "draft-mtp": 311620,
+          "fused:draft-mtp+ngram-retrieval": 185910,
+          "ngram-retrieval": 224
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 55,
+          "fused:draft-mtp+ngram-retrieval": 45,
+          "ngram-retrieval": 6,
+          "ordinary": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 22,
+          "fused:draft-mtp+ngram-retrieval": 3,
+          "ngram-retrieval": 2,
+          "ordinary": 3
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 66,
+          "fused:draft-mtp+ngram-retrieval": 48,
+          "ngram-retrieval": 6,
+          "ordinary": 0
+        }
+      },
+      "workload": "agent_tool_loop"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 17,
+          "fused:draft-mtp+ngram-retrieval": 9,
+          "ngram-retrieval": 12
+        },
+        "candidate_tokens": {
+          "draft-mtp": 51,
+          "fused:draft-mtp+ngram-retrieval": 459,
+          "ngram-retrieval": 539
+        },
+        "coverage_cycles": {
+          "draft-mtp": 17,
+          "fused:draft-mtp+ngram-retrieval": 9,
+          "ngram-retrieval": 12
+        },
+        "cycles": 20,
+        "proposal_time_us": {
+          "draft-mtp": 210174,
+          "fused:draft-mtp+ngram-retrieval": 111248,
+          "ngram-retrieval": 109
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 48,
+          "ngram-retrieval": 45,
+          "ordinary": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 16,
+          "ngram-retrieval": 2,
+          "ordinary": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 48,
+          "ngram-retrieval": 48,
+          "ordinary": 0
+        }
+      },
+      "workload": "code_rewrite"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 13
+        },
+        "candidate_tokens": {
+          "draft-mtp": 39
+        },
+        "coverage_cycles": {
+          "draft-mtp": 13
+        },
+        "cycles": 13,
+        "proposal_time_us": {
+          "draft-mtp": 163568
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 26
+        },
+        "selected_cycles": {
+          "draft-mtp": 13
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 39
+        }
+      },
+      "workload": "json_schema"
+    }
+  ],
+  "within_config_instability": []
+}

@@ -1,0 +1,1619 @@
+{
+  "config_aggregates": [
+    {
+      "cold_tokens_per_second": 43.54000009838045,
+      "config": "frozen_current",
+      "runs": 12,
+      "warm_tokens_per_second": 42.5778737935917,
+      "weighted_tokens_per_second": 43.05356241115067
+    },
+    {
+      "cold_tokens_per_second": 42.68993239739621,
+      "config": "mtp",
+      "runs": 12,
+      "warm_tokens_per_second": 42.57781567095032,
+      "weighted_tokens_per_second": 42.63380032423819
+    },
+    {
+      "cold_tokens_per_second": 46.21043399146398,
+      "config": "retrieval_v2",
+      "runs": 12,
+      "warm_tokens_per_second": 42.7700719457908,
+      "weighted_tokens_per_second": 44.42374350747836
+    }
+  ],
+  "correctness": {
+    "comparisons": 24,
+    "mismatches": [
+      {
+        "actual_hash": "581ca86c0998b4bdf58acbac938262d5813a9e2708d23ad3c807965419639ccc",
+        "config": "frozen_current",
+        "expected_hash": "2ee61ea3cdd9fc7edb93c9141520f43ba64190b9d4ba445b34b3e5603e07f021",
+        "reference": "mtp",
+        "repetition": 0,
+        "workload": "agent_tool_loop"
+      },
+      {
+        "actual_hash": "f9d12939cb5cd245666bdaa00957bed6be5f8b811df70290453710a36852f168",
+        "config": "retrieval_v2",
+        "expected_hash": "2ee61ea3cdd9fc7edb93c9141520f43ba64190b9d4ba445b34b3e5603e07f021",
+        "reference": "mtp",
+        "repetition": 0,
+        "workload": "agent_tool_loop"
+      },
+      {
+        "actual_hash": "581ca86c0998b4bdf58acbac938262d5813a9e2708d23ad3c807965419639ccc",
+        "config": "frozen_current",
+        "expected_hash": "2ee61ea3cdd9fc7edb93c9141520f43ba64190b9d4ba445b34b3e5603e07f021",
+        "reference": "mtp",
+        "repetition": 1,
+        "workload": "agent_tool_loop"
+      },
+      {
+        "actual_hash": "581ca86c0998b4bdf58acbac938262d5813a9e2708d23ad3c807965419639ccc",
+        "config": "retrieval_v2",
+        "expected_hash": "2ee61ea3cdd9fc7edb93c9141520f43ba64190b9d4ba445b34b3e5603e07f021",
+        "reference": "mtp",
+        "repetition": 1,
+        "workload": "agent_tool_loop"
+      }
+    ],
+    "missing_reference": [],
+    "passed": false,
+    "reference": "mtp",
+    "within_config_instability": [
+      {
+        "config": "retrieval_v2",
+        "distinct_output_hashes": 2,
+        "request_seed": 42,
+        "workload": "agent_tool_loop"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "acceptance_rate": 0.5723140495867769,
+      "accepted_tokens": 277.0,
+      "config": "frozen_current",
+      "draft_tokens": 484.0,
+      "max_tokens_per_second": 36.671291217283354,
+      "median_tokens_per_second": 35.57147049627042,
+      "median_wall_ms": 5824.195370500092,
+      "min_tokens_per_second": 34.47164977525748,
+      "runs": 2,
+      "workload": "agent_tool_loop"
+    },
+    {
+      "acceptance_rate": 0.7333333333333333,
+      "accepted_tokens": 110.0,
+      "config": "frozen_current",
+      "draft_tokens": 150.0,
+      "max_tokens_per_second": 40.592446760469045,
+      "median_tokens_per_second": 40.55419856522782,
+      "median_wall_ms": 2433.076679500118,
+      "min_tokens_per_second": 40.5159503699866,
+      "runs": 2,
+      "workload": "code_rewrite"
+    },
+    {
+      "acceptance_rate": 0.6666666666666666,
+      "accepted_tokens": 52.0,
+      "config": "frozen_current",
+      "draft_tokens": 78.0,
+      "max_tokens_per_second": 36.96601875030213,
+      "median_tokens_per_second": 36.96262067784994,
+      "median_wall_ms": 1398.012188499706,
+      "min_tokens_per_second": 36.95922260539775,
+      "runs": 2,
+      "workload": "json_schema"
+    },
+    {
+      "acceptance_rate": 0.6,
+      "accepted_tokens": 192.0,
+      "config": "frozen_current",
+      "draft_tokens": 320.0,
+      "max_tokens_per_second": 50.624266235777455,
+      "median_tokens_per_second": 50.06637970889142,
+      "median_wall_ms": 2661.089917499794,
+      "min_tokens_per_second": 49.508493182005374,
+      "runs": 2,
+      "workload": "near_match_trap"
+    },
+    {
+      "acceptance_rate": 0.7872340425531915,
+      "accepted_tokens": 222.0,
+      "config": "frozen_current",
+      "draft_tokens": 282.0,
+      "max_tokens_per_second": 42.408402518152265,
+      "median_tokens_per_second": 42.34816130736415,
+      "median_wall_ms": 4171.695671499492,
+      "min_tokens_per_second": 42.28792009657604,
+      "runs": 2,
+      "workload": "novel_reasoning"
+    },
+    {
+      "acceptance_rate": 0.5765765765765766,
+      "accepted_tokens": 128.0,
+      "config": "frozen_current",
+      "draft_tokens": 222.0,
+      "max_tokens_per_second": 84.20910805712747,
+      "median_tokens_per_second": 81.55259701115136,
+      "median_wall_ms": 1487.3102445003497,
+      "min_tokens_per_second": 78.89608596517526,
+      "runs": 2,
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "acceptance_rate": 0.679144385026738,
+      "accepted_tokens": 254.0,
+      "config": "mtp",
+      "draft_tokens": 374.0,
+      "max_tokens_per_second": 38.72033155956373,
+      "median_tokens_per_second": 38.661263921318536,
+      "median_wall_ms": 5388.14562700054,
+      "min_tokens_per_second": 38.60219628307334,
+      "runs": 2,
+      "workload": "agent_tool_loop"
+    },
+    {
+      "acceptance_rate": 0.7333333333333333,
+      "accepted_tokens": 110.0,
+      "config": "mtp",
+      "draft_tokens": 150.0,
+      "max_tokens_per_second": 41.109504414646906,
+      "median_tokens_per_second": 41.074307343368105,
+      "median_wall_ms": 2403.237230000286,
+      "min_tokens_per_second": 41.0391102720893,
+      "runs": 2,
+      "workload": "code_rewrite"
+    },
+    {
+      "acceptance_rate": 0.6666666666666666,
+      "accepted_tokens": 52.0,
+      "config": "mtp",
+      "draft_tokens": 78.0,
+      "max_tokens_per_second": 37.40583799627476,
+      "median_tokens_per_second": 37.402233068939694,
+      "median_wall_ms": 1383.318697499817,
+      "min_tokens_per_second": 37.39862814160463,
+      "runs": 2,
+      "workload": "json_schema"
+    },
+    {
+      "acceptance_rate": 0.8888888888888888,
+      "accepted_tokens": 160.0,
+      "config": "mtp",
+      "draft_tokens": 180.0,
+      "max_tokens_per_second": 47.26068478154393,
+      "median_tokens_per_second": 47.1910811184578,
+      "median_wall_ms": 2774.0703985000437,
+      "min_tokens_per_second": 47.12147745537168,
+      "runs": 2,
+      "workload": "near_match_trap"
+    },
+    {
+      "acceptance_rate": 0.7872340425531915,
+      "accepted_tokens": 222.0,
+      "config": "mtp",
+      "draft_tokens": 282.0,
+      "max_tokens_per_second": 43.04107092681231,
+      "median_tokens_per_second": 42.975199464477,
+      "median_wall_ms": 4121.38934999939,
+      "min_tokens_per_second": 42.90932800214169,
+      "runs": 2,
+      "workload": "novel_reasoning"
+    },
+    {
+      "acceptance_rate": 0.9629629629629629,
+      "accepted_tokens": 104.0,
+      "config": "mtp",
+      "draft_tokens": 108.0,
+      "max_tokens_per_second": 49.99696447001432,
+      "median_tokens_per_second": 49.93375738508189,
+      "median_wall_ms": 2026.3874985007533,
+      "min_tokens_per_second": 49.87055030014947,
+      "runs": 2,
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "acceptance_rate": 0.7947882736156352,
+      "accepted_tokens": 244.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 307.0,
+      "max_tokens_per_second": 39.65829087716042,
+      "median_tokens_per_second": 36.65638152716935,
+      "median_wall_ms": 5698.019661499984,
+      "min_tokens_per_second": 33.654472177178285,
+      "runs": 2,
+      "workload": "agent_tool_loop"
+    },
+    {
+      "acceptance_rate": 0.7372262773722628,
+      "accepted_tokens": 101.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 137.0,
+      "max_tokens_per_second": 40.05758277523941,
+      "median_tokens_per_second": 36.08919133975971,
+      "median_wall_ms": 2698.7465754996265,
+      "min_tokens_per_second": 32.12079990428001,
+      "runs": 2,
+      "workload": "code_rewrite"
+    },
+    {
+      "acceptance_rate": 0.6666666666666666,
+      "accepted_tokens": 52.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 78.0,
+      "max_tokens_per_second": 36.98750960252653,
+      "median_tokens_per_second": 36.98679051368613,
+      "median_wall_ms": 1396.3995724998313,
+      "min_tokens_per_second": 36.986071424845726,
+      "runs": 2,
+      "workload": "json_schema"
+    },
+    {
+      "acceptance_rate": 0.8571428571428571,
+      "accepted_tokens": 192.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 224.0,
+      "max_tokens_per_second": 73.53526116048,
+      "median_tokens_per_second": 69.96016720820417,
+      "median_wall_ms": 2021.6824620001717,
+      "min_tokens_per_second": 66.38507325592833,
+      "runs": 2,
+      "workload": "near_match_trap"
+    },
+    {
+      "acceptance_rate": 0.7872340425531915,
+      "accepted_tokens": 222.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 282.0,
+      "max_tokens_per_second": 42.3619420312791,
+      "median_tokens_per_second": 42.338289651511445,
+      "median_wall_ms": 4169.737010999597,
+      "min_tokens_per_second": 42.3146372717438,
+      "runs": 2,
+      "workload": "novel_reasoning"
+    },
+    {
+      "acceptance_rate": 0.5925925925925926,
+      "accepted_tokens": 128.0,
+      "config": "retrieval_v2",
+      "draft_tokens": 216.0,
+      "max_tokens_per_second": 83.26691805345737,
+      "median_tokens_per_second": 80.68719808749742,
+      "median_wall_ms": 1496.3740725002026,
+      "min_tokens_per_second": 78.10747812153747,
+      "runs": 2,
+      "workload": "rolling_long_repeat"
+    }
+  ],
+  "server_scope": "config",
+  "trace_runs": [
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 47
+        },
+        "candidate_tokens": {
+          "draft-mtp": 141
+        },
+        "coverage_cycles": {
+          "draft-mtp": 47
+        },
+        "cycles": 47,
+        "proposal_time_us": {
+          "draft-mtp": 583374
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 111
+        },
+        "selected_cycles": {
+          "draft-mtp": 47
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 141
+        }
+      },
+      "workload": "novel_reasoning"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 3,
+          "fused:draft-mtp+ngram-mod": 3,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "mod-long": 4,
+          "mod-short": 4,
+          "ngram-cache": 4,
+          "ngram-mod": 4,
+          "ngram-simple": 4,
+          "simple-fast": 4
+        },
+        "candidate_tokens": {
+          "draft-mtp": 18,
+          "fused:draft-mtp+mod-long": 153,
+          "fused:draft-mtp+mod-short": 105,
+          "fused:draft-mtp+ngram-cache": 33,
+          "fused:draft-mtp+ngram-mod": 105,
+          "fused:draft-mtp+ngram-simple": 153,
+          "fused:draft-mtp+simple-fast": 105,
+          "mod-long": 192,
+          "mod-short": 128,
+          "ngram-cache": 32,
+          "ngram-mod": 128,
+          "ngram-simple": 192,
+          "simple-fast": 128
+        },
+        "coverage_cycles": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 3,
+          "fused:draft-mtp+ngram-mod": 3,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "mod-long": 4,
+          "mod-short": 4,
+          "ngram-cache": 4,
+          "ngram-mod": 4,
+          "ngram-simple": 4,
+          "simple-fast": 4
+        },
+        "cycles": 6,
+        "proposal_time_us": {
+          "draft-mtp": 74276,
+          "fused:draft-mtp+mod-long": 36983,
+          "fused:draft-mtp+mod-short": 36981,
+          "fused:draft-mtp+ngram-cache": 36984,
+          "fused:draft-mtp+ngram-mod": 36982,
+          "fused:draft-mtp+ngram-simple": 36980,
+          "fused:draft-mtp+simple-fast": 36981,
+          "mod-long": 15,
+          "mod-short": 13,
+          "ngram-cache": 99,
+          "ngram-mod": 13,
+          "ngram-simple": 1,
+          "simple-fast": 2
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-simple": 51,
+          "ngram-simple": 2
+        },
+        "selected_cycles": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-simple": 1,
+          "ngram-simple": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-simple": 51,
+          "ngram-simple": 48
+        }
+      },
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+map-k-fast": 4,
+          "fused:draft-mtp+map-k-strict": 4,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 9,
+          "fused:draft-mtp+ngram-map-k": 1,
+          "fused:draft-mtp+ngram-mod": 1,
+          "fused:draft-mtp+ngram-simple": 5,
+          "fused:draft-mtp+simple-fast": 6,
+          "k4v-short": 1,
+          "map-k-fast": 4,
+          "map-k-strict": 3,
+          "mod-long": 2,
+          "mod-short": 3,
+          "ngram-cache": 8,
+          "ngram-map-k": 1,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 5,
+          "simple-fast": 6
+        },
+        "candidate_tokens": {
+          "draft-mtp": 36,
+          "fused:draft-mtp+map-k-fast": 76,
+          "fused:draft-mtp+map-k-strict": 140,
+          "fused:draft-mtp+mod-long": 137,
+          "fused:draft-mtp+mod-short": 131,
+          "fused:draft-mtp+ngram-cache": 92,
+          "fused:draft-mtp+ngram-map-k": 51,
+          "fused:draft-mtp+ngram-mod": 35,
+          "fused:draft-mtp+ngram-simple": 203,
+          "fused:draft-mtp+simple-fast": 210,
+          "k4v-short": 24,
+          "map-k-fast": 64,
+          "map-k-strict": 96,
+          "mod-long": 96,
+          "mod-short": 90,
+          "ngram-cache": 64,
+          "ngram-map-k": 48,
+          "ngram-map-k4v": 48,
+          "ngram-simple": 213,
+          "simple-fast": 192
+        },
+        "coverage_cycles": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+map-k-fast": 4,
+          "fused:draft-mtp+map-k-strict": 4,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 9,
+          "fused:draft-mtp+ngram-map-k": 1,
+          "fused:draft-mtp+ngram-mod": 1,
+          "fused:draft-mtp+ngram-simple": 5,
+          "fused:draft-mtp+simple-fast": 6,
+          "k4v-short": 1,
+          "map-k-fast": 4,
+          "map-k-strict": 3,
+          "mod-long": 2,
+          "mod-short": 3,
+          "ngram-cache": 8,
+          "ngram-map-k": 1,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 5,
+          "simple-fast": 6
+        },
+        "cycles": 12,
+        "proposal_time_us": {
+          "draft-mtp": 148990,
+          "fused:draft-mtp+map-k-fast": 49275,
+          "fused:draft-mtp+map-k-strict": 49278,
+          "fused:draft-mtp+mod-long": 36951,
+          "fused:draft-mtp+mod-short": 49280,
+          "fused:draft-mtp+ngram-cache": 110965,
+          "fused:draft-mtp+ngram-map-k": 12330,
+          "fused:draft-mtp+ngram-mod": 12320,
+          "fused:draft-mtp+ngram-simple": 61529,
+          "fused:draft-mtp+simple-fast": 73860,
+          "k4v-short": 1,
+          "map-k-fast": 4,
+          "map-k-strict": 3,
+          "mod-long": 6,
+          "mod-short": 10,
+          "ngram-cache": 67,
+          "ngram-map-k": 1,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 2,
+          "simple-fast": 2
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+ngram-simple": 9,
+          "ngram-cache": 24,
+          "ngram-simple": 44,
+          "simple-fast": 16
+        },
+        "selected_cycles": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-simple": 1,
+          "ngram-cache": 3,
+          "ngram-simple": 3,
+          "simple-fast": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-simple": 38,
+          "ngram-cache": 24,
+          "ngram-simple": 72,
+          "simple-fast": 16
+        }
+      },
+      "workload": "near_match_trap"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 45,
+          "fused:draft-mtp+map-k-fast": 9,
+          "fused:draft-mtp+map-k-strict": 1,
+          "fused:draft-mtp+mod-long": 1,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 28,
+          "fused:draft-mtp+ngram-map-k": 1,
+          "fused:draft-mtp+ngram-map-k4v": 1,
+          "fused:draft-mtp+ngram-simple": 7,
+          "fused:draft-mtp+simple-fast": 13,
+          "map-k-fast": 7,
+          "map-k-strict": 3,
+          "mod-short": 5,
+          "ngram-cache": 24,
+          "ngram-map-k": 3,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 8,
+          "simple-fast": 11
+        },
+        "candidate_tokens": {
+          "draft-mtp": 133,
+          "fused:draft-mtp+map-k-fast": 171,
+          "fused:draft-mtp+map-k-strict": 35,
+          "fused:draft-mtp+mod-long": 51,
+          "fused:draft-mtp+mod-short": 130,
+          "fused:draft-mtp+ngram-cache": 286,
+          "fused:draft-mtp+ngram-map-k": 51,
+          "fused:draft-mtp+ngram-map-k4v": 51,
+          "fused:draft-mtp+ngram-simple": 236,
+          "fused:draft-mtp+simple-fast": 400,
+          "map-k-fast": 112,
+          "map-k-strict": 96,
+          "mod-short": 122,
+          "ngram-cache": 156,
+          "ngram-map-k": 144,
+          "ngram-map-k4v": 48,
+          "ngram-simple": 289,
+          "simple-fast": 302
+        },
+        "coverage_cycles": {
+          "draft-mtp": 45,
+          "fused:draft-mtp+map-k-fast": 9,
+          "fused:draft-mtp+map-k-strict": 1,
+          "fused:draft-mtp+mod-long": 1,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 28,
+          "fused:draft-mtp+ngram-map-k": 1,
+          "fused:draft-mtp+ngram-map-k4v": 1,
+          "fused:draft-mtp+ngram-simple": 7,
+          "fused:draft-mtp+simple-fast": 13,
+          "map-k-fast": 7,
+          "map-k-strict": 3,
+          "mod-short": 5,
+          "ngram-cache": 24,
+          "ngram-map-k": 3,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 8,
+          "simple-fast": 11
+        },
+        "cycles": 45,
+        "proposal_time_us": {
+          "draft-mtp": 560228,
+          "fused:draft-mtp+map-k-fast": 111439,
+          "fused:draft-mtp+map-k-strict": 12635,
+          "fused:draft-mtp+mod-long": 12312,
+          "fused:draft-mtp+mod-short": 49506,
+          "fused:draft-mtp+ngram-cache": 346944,
+          "fused:draft-mtp+ngram-map-k": 12634,
+          "fused:draft-mtp+ngram-map-k4v": 12634,
+          "fused:draft-mtp+ngram-simple": 86329,
+          "fused:draft-mtp+simple-fast": 160666,
+          "map-k-fast": 8,
+          "map-k-strict": 3,
+          "mod-short": 13,
+          "ngram-cache": 169,
+          "ngram-map-k": 4,
+          "ngram-map-k4v": 1,
+          "ngram-simple": 4,
+          "simple-fast": 4
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 59,
+          "fused:draft-mtp+map-k-fast": 6,
+          "fused:draft-mtp+ngram-cache": 11,
+          "fused:draft-mtp+ngram-map-k4v": 15,
+          "fused:draft-mtp+simple-fast": 5,
+          "map-k-fast": 11,
+          "ngram-cache": 29,
+          "ngram-map-k": 9
+        },
+        "selected_cycles": {
+          "draft-mtp": 31,
+          "fused:draft-mtp+map-k-fast": 1,
+          "fused:draft-mtp+ngram-cache": 1,
+          "fused:draft-mtp+ngram-map-k4v": 1,
+          "fused:draft-mtp+simple-fast": 1,
+          "map-k-fast": 2,
+          "ngram-cache": 6,
+          "ngram-map-k": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 91,
+          "fused:draft-mtp+map-k-fast": 16,
+          "fused:draft-mtp+ngram-cache": 11,
+          "fused:draft-mtp+ngram-map-k4v": 51,
+          "fused:draft-mtp+simple-fast": 5,
+          "map-k-fast": 24,
+          "ngram-cache": 38,
+          "ngram-map-k": 24
+        }
+      },
+      "workload": "agent_tool_loop"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 25,
+          "fused:draft-mtp+ngram-cache": 3,
+          "ngram-cache": 3
+        },
+        "candidate_tokens": {
+          "draft-mtp": 75,
+          "fused:draft-mtp+ngram-cache": 29,
+          "ngram-cache": 11
+        },
+        "coverage_cycles": {
+          "draft-mtp": 25,
+          "fused:draft-mtp+ngram-cache": 3,
+          "ngram-cache": 3
+        },
+        "cycles": 25,
+        "proposal_time_us": {
+          "draft-mtp": 310379,
+          "fused:draft-mtp+ngram-cache": 37465,
+          "ngram-cache": 91
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 55
+        },
+        "selected_cycles": {
+          "draft-mtp": 25
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 75
+        }
+      },
+      "workload": "code_rewrite"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 13,
+          "ngram-cache": 1
+        },
+        "candidate_tokens": {
+          "draft-mtp": 39,
+          "ngram-cache": 8
+        },
+        "coverage_cycles": {
+          "draft-mtp": 13,
+          "ngram-cache": 1
+        },
+        "cycles": 13,
+        "proposal_time_us": {
+          "draft-mtp": 163019,
+          "ngram-cache": 9
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 26
+        },
+        "selected_cycles": {
+          "draft-mtp": 13
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 39
+        }
+      },
+      "workload": "json_schema"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 47
+        },
+        "candidate_tokens": {
+          "draft-mtp": 141
+        },
+        "coverage_cycles": {
+          "draft-mtp": 47
+        },
+        "cycles": 47,
+        "proposal_time_us": {
+          "draft-mtp": 587290
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 111
+        },
+        "selected_cycles": {
+          "draft-mtp": 47
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 141
+        }
+      },
+      "workload": "novel_reasoning"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 3,
+          "fused:draft-mtp+ngram-mod": 3,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "mod-long": 4,
+          "mod-short": 4,
+          "ngram-cache": 4,
+          "ngram-mod": 4,
+          "ngram-simple": 4,
+          "simple-fast": 4
+        },
+        "candidate_tokens": {
+          "draft-mtp": 18,
+          "fused:draft-mtp+mod-long": 153,
+          "fused:draft-mtp+mod-short": 105,
+          "fused:draft-mtp+ngram-cache": 33,
+          "fused:draft-mtp+ngram-mod": 105,
+          "fused:draft-mtp+ngram-simple": 153,
+          "fused:draft-mtp+simple-fast": 105,
+          "mod-long": 192,
+          "mod-short": 128,
+          "ngram-cache": 32,
+          "ngram-mod": 128,
+          "ngram-simple": 192,
+          "simple-fast": 128
+        },
+        "coverage_cycles": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 3,
+          "fused:draft-mtp+ngram-cache": 3,
+          "fused:draft-mtp+ngram-mod": 3,
+          "fused:draft-mtp+ngram-simple": 3,
+          "fused:draft-mtp+simple-fast": 3,
+          "mod-long": 4,
+          "mod-short": 4,
+          "ngram-cache": 4,
+          "ngram-mod": 4,
+          "ngram-simple": 4,
+          "simple-fast": 4
+        },
+        "cycles": 6,
+        "proposal_time_us": {
+          "draft-mtp": 74416,
+          "fused:draft-mtp+mod-long": 37079,
+          "fused:draft-mtp+mod-short": 37079,
+          "fused:draft-mtp+ngram-cache": 37082,
+          "fused:draft-mtp+ngram-mod": 37079,
+          "fused:draft-mtp+ngram-simple": 37076,
+          "fused:draft-mtp+simple-fast": 37076,
+          "mod-long": 5,
+          "mod-short": 7,
+          "ngram-cache": 69,
+          "ngram-mod": 9,
+          "ngram-simple": 0,
+          "simple-fast": 4
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-simple": 51,
+          "ngram-simple": 2
+        },
+        "selected_cycles": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-simple": 1,
+          "ngram-simple": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-simple": 51,
+          "ngram-simple": 48
+        }
+      },
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+map-k-fast": 4,
+          "fused:draft-mtp+map-k-strict": 4,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 9,
+          "fused:draft-mtp+ngram-map-k": 1,
+          "fused:draft-mtp+ngram-mod": 1,
+          "fused:draft-mtp+ngram-simple": 5,
+          "fused:draft-mtp+simple-fast": 6,
+          "map-k-fast": 4,
+          "map-k-strict": 3,
+          "mod-long": 2,
+          "mod-short": 4,
+          "ngram-cache": 8,
+          "ngram-map-k": 1,
+          "ngram-mod": 1,
+          "ngram-simple": 5,
+          "simple-fast": 6
+        },
+        "candidate_tokens": {
+          "draft-mtp": 36,
+          "fused:draft-mtp+map-k-fast": 76,
+          "fused:draft-mtp+map-k-strict": 140,
+          "fused:draft-mtp+mod-long": 137,
+          "fused:draft-mtp+mod-short": 131,
+          "fused:draft-mtp+ngram-cache": 92,
+          "fused:draft-mtp+ngram-map-k": 51,
+          "fused:draft-mtp+ngram-mod": 35,
+          "fused:draft-mtp+ngram-simple": 203,
+          "fused:draft-mtp+simple-fast": 210,
+          "map-k-fast": 64,
+          "map-k-strict": 96,
+          "mod-long": 96,
+          "mod-short": 122,
+          "ngram-cache": 64,
+          "ngram-map-k": 48,
+          "ngram-mod": 32,
+          "ngram-simple": 201,
+          "simple-fast": 192
+        },
+        "coverage_cycles": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+map-k-fast": 4,
+          "fused:draft-mtp+map-k-strict": 4,
+          "fused:draft-mtp+mod-long": 3,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 9,
+          "fused:draft-mtp+ngram-map-k": 1,
+          "fused:draft-mtp+ngram-mod": 1,
+          "fused:draft-mtp+ngram-simple": 5,
+          "fused:draft-mtp+simple-fast": 6,
+          "map-k-fast": 4,
+          "map-k-strict": 3,
+          "mod-long": 2,
+          "mod-short": 4,
+          "ngram-cache": 8,
+          "ngram-map-k": 1,
+          "ngram-mod": 1,
+          "ngram-simple": 5,
+          "simple-fast": 6
+        },
+        "cycles": 12,
+        "proposal_time_us": {
+          "draft-mtp": 149047,
+          "fused:draft-mtp+map-k-fast": 49301,
+          "fused:draft-mtp+map-k-strict": 49302,
+          "fused:draft-mtp+mod-long": 36957,
+          "fused:draft-mtp+mod-short": 49307,
+          "fused:draft-mtp+ngram-cache": 111066,
+          "fused:draft-mtp+ngram-map-k": 12353,
+          "fused:draft-mtp+ngram-mod": 12315,
+          "fused:draft-mtp+ngram-simple": 61642,
+          "fused:draft-mtp+simple-fast": 74029,
+          "map-k-fast": 4,
+          "map-k-strict": 6,
+          "mod-long": 6,
+          "mod-short": 12,
+          "ngram-cache": 67,
+          "ngram-map-k": 1,
+          "ngram-mod": 3,
+          "ngram-simple": 1,
+          "simple-fast": 1
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 6,
+          "fused:draft-mtp+ngram-cache": 11,
+          "fused:draft-mtp+ngram-simple": 29,
+          "fused:draft-mtp+simple-fast": 16,
+          "ngram-cache": 16,
+          "ngram-simple": 10,
+          "simple-fast": 11
+        },
+        "selected_cycles": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-cache": 1,
+          "fused:draft-mtp+ngram-simple": 2,
+          "fused:draft-mtp+simple-fast": 1,
+          "ngram-cache": 2,
+          "ngram-simple": 1,
+          "simple-fast": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-cache": 11,
+          "fused:draft-mtp+ngram-simple": 77,
+          "fused:draft-mtp+simple-fast": 16,
+          "ngram-cache": 16,
+          "ngram-simple": 10,
+          "simple-fast": 16
+        }
+      },
+      "workload": "near_match_trap"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 45,
+          "fused:draft-mtp+map-k-fast": 9,
+          "fused:draft-mtp+map-k-strict": 1,
+          "fused:draft-mtp+mod-long": 2,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 28,
+          "fused:draft-mtp+ngram-map-k": 1,
+          "fused:draft-mtp+ngram-simple": 7,
+          "fused:draft-mtp+simple-fast": 13,
+          "map-k-fast": 9,
+          "map-k-strict": 4,
+          "mod-short": 5,
+          "ngram-cache": 27,
+          "ngram-map-k": 4,
+          "ngram-map-k4v": 2,
+          "ngram-simple": 9,
+          "simple-fast": 13
+        },
+        "candidate_tokens": {
+          "draft-mtp": 133,
+          "fused:draft-mtp+map-k-fast": 171,
+          "fused:draft-mtp+map-k-strict": 35,
+          "fused:draft-mtp+mod-long": 102,
+          "fused:draft-mtp+mod-short": 130,
+          "fused:draft-mtp+ngram-cache": 279,
+          "fused:draft-mtp+ngram-map-k": 51,
+          "fused:draft-mtp+ngram-simple": 236,
+          "fused:draft-mtp+simple-fast": 400,
+          "map-k-fast": 144,
+          "map-k-strict": 128,
+          "mod-short": 138,
+          "ngram-cache": 175,
+          "ngram-map-k": 192,
+          "ngram-map-k4v": 96,
+          "ngram-simple": 337,
+          "simple-fast": 362
+        },
+        "coverage_cycles": {
+          "draft-mtp": 45,
+          "fused:draft-mtp+map-k-fast": 9,
+          "fused:draft-mtp+map-k-strict": 1,
+          "fused:draft-mtp+mod-long": 2,
+          "fused:draft-mtp+mod-short": 4,
+          "fused:draft-mtp+ngram-cache": 28,
+          "fused:draft-mtp+ngram-map-k": 1,
+          "fused:draft-mtp+ngram-simple": 7,
+          "fused:draft-mtp+simple-fast": 13,
+          "map-k-fast": 9,
+          "map-k-strict": 4,
+          "mod-short": 5,
+          "ngram-cache": 27,
+          "ngram-map-k": 4,
+          "ngram-map-k4v": 2,
+          "ngram-simple": 9,
+          "simple-fast": 13
+        },
+        "cycles": 45,
+        "proposal_time_us": {
+          "draft-mtp": 561089,
+          "fused:draft-mtp+map-k-fast": 111425,
+          "fused:draft-mtp+map-k-strict": 12277,
+          "fused:draft-mtp+mod-long": 24648,
+          "fused:draft-mtp+mod-short": 49422,
+          "fused:draft-mtp+ngram-cache": 348104,
+          "fused:draft-mtp+ngram-map-k": 12276,
+          "fused:draft-mtp+ngram-simple": 86562,
+          "fused:draft-mtp+simple-fast": 160942,
+          "map-k-fast": 12,
+          "map-k-strict": 4,
+          "mod-short": 11,
+          "ngram-cache": 208,
+          "ngram-map-k": 4,
+          "ngram-map-k4v": 3,
+          "ngram-simple": 3,
+          "simple-fast": 4
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 66,
+          "fused:draft-mtp+mod-long": 2,
+          "fused:draft-mtp+ngram-cache": 34,
+          "map-k-fast": 3,
+          "map-k-strict": 8,
+          "ngram-cache": 19,
+          "ngram-map-k4v": 13
+        },
+        "selected_cycles": {
+          "draft-mtp": 32,
+          "fused:draft-mtp+mod-long": 1,
+          "fused:draft-mtp+ngram-cache": 5,
+          "map-k-fast": 1,
+          "map-k-strict": 1,
+          "ngram-cache": 3,
+          "ngram-map-k4v": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 94,
+          "fused:draft-mtp+mod-long": 16,
+          "fused:draft-mtp+ngram-cache": 55,
+          "map-k-fast": 8,
+          "map-k-strict": 8,
+          "ngram-cache": 24,
+          "ngram-map-k4v": 19
+        }
+      },
+      "workload": "agent_tool_loop"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 25,
+          "fused:draft-mtp+ngram-cache": 3,
+          "ngram-cache": 3
+        },
+        "candidate_tokens": {
+          "draft-mtp": 75,
+          "fused:draft-mtp+ngram-cache": 29,
+          "ngram-cache": 11
+        },
+        "coverage_cycles": {
+          "draft-mtp": 25,
+          "fused:draft-mtp+ngram-cache": 3,
+          "ngram-cache": 3
+        },
+        "cycles": 25,
+        "proposal_time_us": {
+          "draft-mtp": 312550,
+          "fused:draft-mtp+ngram-cache": 37697,
+          "ngram-cache": 91
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 55
+        },
+        "selected_cycles": {
+          "draft-mtp": 25
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 75
+        }
+      },
+      "workload": "code_rewrite"
+    },
+    {
+      "config": "frozen_current",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 13,
+          "ngram-cache": 1
+        },
+        "candidate_tokens": {
+          "draft-mtp": 39,
+          "ngram-cache": 8
+        },
+        "coverage_cycles": {
+          "draft-mtp": 13,
+          "ngram-cache": 1
+        },
+        "cycles": 13,
+        "proposal_time_us": {
+          "draft-mtp": 163500,
+          "ngram-cache": 8
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 26
+        },
+        "selected_cycles": {
+          "draft-mtp": 13
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 39
+        }
+      },
+      "workload": "json_schema"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 47,
+          "fused:draft-mtp+ngram-retrieval": 6,
+          "ngram-retrieval": 6
+        },
+        "candidate_tokens": {
+          "draft-mtp": 141,
+          "fused:draft-mtp+ngram-retrieval": 181,
+          "ngram-retrieval": 196
+        },
+        "coverage_cycles": {
+          "draft-mtp": 47,
+          "fused:draft-mtp+ngram-retrieval": 6,
+          "ngram-retrieval": 6
+        },
+        "cycles": 47,
+        "proposal_time_us": {
+          "draft-mtp": 586397,
+          "fused:draft-mtp+ngram-retrieval": 74193,
+          "ngram-retrieval": 43
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 111
+        },
+        "selected_cycles": {
+          "draft-mtp": 47
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 141
+        }
+      },
+      "workload": "novel_reasoning"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-retrieval": 4,
+          "ngram-retrieval": 6
+        },
+        "candidate_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-retrieval": 204,
+          "ngram-retrieval": 288
+        },
+        "coverage_cycles": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-retrieval": 4,
+          "ngram-retrieval": 6
+        },
+        "cycles": 6,
+        "proposal_time_us": {
+          "draft-mtp": 50041,
+          "fused:draft-mtp+ngram-retrieval": 50066,
+          "ngram-retrieval": 60
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 12,
+          "ngram-retrieval": 53
+        },
+        "selected_cycles": {
+          "draft-mtp": 4,
+          "ngram-retrieval": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 12,
+          "ngram-retrieval": 96
+        }
+      },
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 11,
+          "fused:draft-mtp+ngram-retrieval": 9,
+          "ngram-retrieval": 9
+        },
+        "candidate_tokens": {
+          "draft-mtp": 33,
+          "fused:draft-mtp+ngram-retrieval": 369,
+          "ngram-retrieval": 348
+        },
+        "coverage_cycles": {
+          "draft-mtp": 11,
+          "fused:draft-mtp+ngram-retrieval": 9,
+          "ngram-retrieval": 9
+        },
+        "cycles": 13,
+        "proposal_time_us": {
+          "draft-mtp": 138649,
+          "fused:draft-mtp+ngram-retrieval": 112871,
+          "ngram-retrieval": 85
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 18,
+          "fused:draft-mtp+ngram-retrieval": 69,
+          "ngram-retrieval": 11,
+          "ordinary": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 8,
+          "fused:draft-mtp+ngram-retrieval": 2,
+          "ngram-retrieval": 1,
+          "ordinary": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 24,
+          "fused:draft-mtp+ngram-retrieval": 80,
+          "ngram-retrieval": 16,
+          "ordinary": 0
+        }
+      },
+      "workload": "near_match_trap"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 59,
+          "fused:draft-mtp+ngram-retrieval": 40,
+          "ngram-retrieval": 33
+        },
+        "candidate_tokens": {
+          "draft-mtp": 175,
+          "fused:draft-mtp+ngram-retrieval": 1222,
+          "ngram-retrieval": 896
+        },
+        "coverage_cycles": {
+          "draft-mtp": 59,
+          "fused:draft-mtp+ngram-retrieval": 40,
+          "ngram-retrieval": 33
+        },
+        "cycles": 60,
+        "proposal_time_us": {
+          "draft-mtp": 740989,
+          "fused:draft-mtp+ngram-retrieval": 501003,
+          "ngram-retrieval": 407
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 117,
+          "fused:draft-mtp+ngram-retrieval": 6,
+          "ngram-retrieval": 8,
+          "ordinary": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 46,
+          "fused:draft-mtp+ngram-retrieval": 1,
+          "ngram-retrieval": 2,
+          "ordinary": 11
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 136,
+          "fused:draft-mtp+ngram-retrieval": 8,
+          "ngram-retrieval": 11,
+          "ordinary": 0
+        }
+      },
+      "workload": "agent_tool_loop"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 24,
+          "fused:draft-mtp+ngram-retrieval": 8,
+          "ngram-retrieval": 2
+        },
+        "candidate_tokens": {
+          "draft-mtp": 72,
+          "fused:draft-mtp+ngram-retrieval": 349,
+          "ngram-retrieval": 96
+        },
+        "coverage_cycles": {
+          "draft-mtp": 24,
+          "fused:draft-mtp+ngram-retrieval": 8,
+          "ngram-retrieval": 2
+        },
+        "cycles": 24,
+        "proposal_time_us": {
+          "draft-mtp": 299870,
+          "fused:draft-mtp+ngram-retrieval": 100034,
+          "ngram-retrieval": 14
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 47,
+          "fused:draft-mtp+ngram-retrieval": 9,
+          "ngram-retrieval": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 21,
+          "fused:draft-mtp+ngram-retrieval": 2,
+          "ngram-retrieval": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 63,
+          "fused:draft-mtp+ngram-retrieval": 11,
+          "ngram-retrieval": 3
+        }
+      },
+      "workload": "code_rewrite"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 0,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 13
+        },
+        "candidate_tokens": {
+          "draft-mtp": 39
+        },
+        "coverage_cycles": {
+          "draft-mtp": 13
+        },
+        "cycles": 13,
+        "proposal_time_us": {
+          "draft-mtp": 162922
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 26
+        },
+        "selected_cycles": {
+          "draft-mtp": 13
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 39
+        }
+      },
+      "workload": "json_schema"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 47,
+          "fused:draft-mtp+ngram-retrieval": 6,
+          "ngram-retrieval": 5
+        },
+        "candidate_tokens": {
+          "draft-mtp": 141,
+          "fused:draft-mtp+ngram-retrieval": 181,
+          "ngram-retrieval": 156
+        },
+        "coverage_cycles": {
+          "draft-mtp": 47,
+          "fused:draft-mtp+ngram-retrieval": 6,
+          "ngram-retrieval": 5
+        },
+        "cycles": 47,
+        "proposal_time_us": {
+          "draft-mtp": 584160,
+          "fused:draft-mtp+ngram-retrieval": 73991,
+          "ngram-retrieval": 34
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 106,
+          "fused:draft-mtp+ngram-retrieval": 3,
+          "ngram-retrieval": 2
+        },
+        "selected_cycles": {
+          "draft-mtp": 45,
+          "fused:draft-mtp+ngram-retrieval": 1,
+          "ngram-retrieval": 1
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 135,
+          "fused:draft-mtp+ngram-retrieval": 3,
+          "ngram-retrieval": 3
+        }
+      },
+      "workload": "novel_reasoning"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-retrieval": 4,
+          "ngram-retrieval": 6
+        },
+        "candidate_tokens": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-retrieval": 204,
+          "ngram-retrieval": 288
+        },
+        "coverage_cycles": {
+          "draft-mtp": 4,
+          "fused:draft-mtp+ngram-retrieval": 4,
+          "ngram-retrieval": 6
+        },
+        "cycles": 6,
+        "proposal_time_us": {
+          "draft-mtp": 49980,
+          "fused:draft-mtp+ngram-retrieval": 50006,
+          "ngram-retrieval": 60
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 12,
+          "ngram-retrieval": 53
+        },
+        "selected_cycles": {
+          "draft-mtp": 4,
+          "ngram-retrieval": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 12,
+          "ngram-retrieval": 96
+        }
+      },
+      "workload": "rolling_long_repeat"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-retrieval": 10,
+          "ngram-retrieval": 10
+        },
+        "candidate_tokens": {
+          "draft-mtp": 36,
+          "fused:draft-mtp+ngram-retrieval": 437,
+          "ngram-retrieval": 369
+        },
+        "coverage_cycles": {
+          "draft-mtp": 12,
+          "fused:draft-mtp+ngram-retrieval": 10,
+          "ngram-retrieval": 10
+        },
+        "cycles": 14,
+        "proposal_time_us": {
+          "draft-mtp": 151136,
+          "fused:draft-mtp+ngram-retrieval": 125281,
+          "ngram-retrieval": 106
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 15,
+          "fused:draft-mtp+ngram-retrieval": 64,
+          "ngram-retrieval": 17,
+          "ordinary": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 7,
+          "fused:draft-mtp+ngram-retrieval": 2,
+          "ngram-retrieval": 3,
+          "ordinary": 2
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 21,
+          "fused:draft-mtp+ngram-retrieval": 64,
+          "ngram-retrieval": 19,
+          "ordinary": 0
+        }
+      },
+      "workload": "near_match_trap"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 71,
+          "fused:draft-mtp+ngram-retrieval": 34,
+          "ngram-retrieval": 33
+        },
+        "candidate_tokens": {
+          "draft-mtp": 211,
+          "fused:draft-mtp+ngram-retrieval": 966,
+          "ngram-retrieval": 947
+        },
+        "coverage_cycles": {
+          "draft-mtp": 71,
+          "fused:draft-mtp+ngram-retrieval": 34,
+          "ngram-retrieval": 33
+        },
+        "cycles": 75,
+        "proposal_time_us": {
+          "draft-mtp": 904611,
+          "fused:draft-mtp+ngram-retrieval": 426059,
+          "ngram-retrieval": 427
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 97,
+          "fused:draft-mtp+ngram-retrieval": 12,
+          "ngram-retrieval": 6,
+          "ordinary": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 42,
+          "fused:draft-mtp+ngram-retrieval": 3,
+          "ngram-retrieval": 3,
+          "ordinary": 27
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 124,
+          "fused:draft-mtp+ngram-retrieval": 19,
+          "ngram-retrieval": 9,
+          "ordinary": 0
+        }
+      },
+      "workload": "agent_tool_loop"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 35,
+          "fused:draft-mtp+ngram-retrieval": 9,
+          "ngram-retrieval": 6
+        },
+        "candidate_tokens": {
+          "draft-mtp": 105,
+          "fused:draft-mtp+ngram-retrieval": 371,
+          "ngram-retrieval": 201
+        },
+        "coverage_cycles": {
+          "draft-mtp": 35,
+          "fused:draft-mtp+ngram-retrieval": 9,
+          "ngram-retrieval": 6
+        },
+        "cycles": 35,
+        "proposal_time_us": {
+          "draft-mtp": 447897,
+          "fused:draft-mtp+ngram-retrieval": 114830,
+          "ngram-retrieval": 53
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 45,
+          "ngram-retrieval": 0,
+          "ordinary": 0
+        },
+        "selected_cycles": {
+          "draft-mtp": 19,
+          "ngram-retrieval": 1,
+          "ordinary": 15
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 57,
+          "ngram-retrieval": 3,
+          "ordinary": 0
+        }
+      },
+      "workload": "code_rewrite"
+    },
+    {
+      "config": "retrieval_v2",
+      "repetition": 1,
+      "summary": {
+        "candidate_calls": {
+          "draft-mtp": 13
+        },
+        "candidate_tokens": {
+          "draft-mtp": 39
+        },
+        "coverage_cycles": {
+          "draft-mtp": 13
+        },
+        "cycles": 13,
+        "proposal_time_us": {
+          "draft-mtp": 163277
+        },
+        "selected_accepted_tokens": {
+          "draft-mtp": 26
+        },
+        "selected_cycles": {
+          "draft-mtp": 13
+        },
+        "selected_proposed_tokens": {
+          "draft-mtp": 39
+        }
+      },
+      "workload": "json_schema"
+    }
+  ],
+  "within_config_instability": [
+    {
+      "config": "retrieval_v2",
+      "distinct_output_hashes": 2,
+      "request_seed": 42,
+      "workload": "agent_tool_loop"
+    }
+  ]
+}

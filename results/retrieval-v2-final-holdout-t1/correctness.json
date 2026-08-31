@@ -1,0 +1,48 @@
+{
+  "comparisons": 24,
+  "mismatches": [
+    {
+      "actual_hash": "581ca86c0998b4bdf58acbac938262d5813a9e2708d23ad3c807965419639ccc",
+      "config": "frozen_current",
+      "expected_hash": "2ee61ea3cdd9fc7edb93c9141520f43ba64190b9d4ba445b34b3e5603e07f021",
+      "reference": "mtp",
+      "repetition": 0,
+      "workload": "agent_tool_loop"
+    },
+    {
+      "actual_hash": "f9d12939cb5cd245666bdaa00957bed6be5f8b811df70290453710a36852f168",
+      "config": "retrieval_v2",
+      "expected_hash": "2ee61ea3cdd9fc7edb93c9141520f43ba64190b9d4ba445b34b3e5603e07f021",
+      "reference": "mtp",
+      "repetition": 0,
+      "workload": "agent_tool_loop"
+    },
+    {
+      "actual_hash": "581ca86c0998b4bdf58acbac938262d5813a9e2708d23ad3c807965419639ccc",
+      "config": "frozen_current",
+      "expected_hash": "2ee61ea3cdd9fc7edb93c9141520f43ba64190b9d4ba445b34b3e5603e07f021",
+      "reference": "mtp",
+      "repetition": 1,
+      "workload": "agent_tool_loop"
+    },
+    {
+      "actual_hash": "581ca86c0998b4bdf58acbac938262d5813a9e2708d23ad3c807965419639ccc",
+      "config": "retrieval_v2",
+      "expected_hash": "2ee61ea3cdd9fc7edb93c9141520f43ba64190b9d4ba445b34b3e5603e07f021",
+      "reference": "mtp",
+      "repetition": 1,
+      "workload": "agent_tool_loop"
+    }
+  ],
+  "missing_reference": [],
+  "passed": false,
+  "reference": "mtp",
+  "within_config_instability": [
+    {
+      "config": "retrieval_v2",
+      "distinct_output_hashes": 2,
+      "request_seed": 42,
+      "workload": "agent_tool_loop"
+    }
+  ]
+}

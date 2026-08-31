@@ -38,6 +38,15 @@ struct common_speculative_candidate_metadata {
     int32_t ubatch_size = 0;
     int32_t active_slots = 1;
     std::vector<uint16_t> agreement_prefix;
+    uint64_t retrieval_evidence_key = 0;
+    uint16_t retrieval_verified_matches = 0;
+    uint16_t retrieval_alternatives = 0;
+    uint8_t retrieval_policy = 0;
+    std::vector<uint16_t> retrieval_match_length;
+    std::vector<uint16_t> retrieval_source_support;
+    std::vector<uint16_t> retrieval_dominance_permille;
+    std::vector<uint32_t> retrieval_source_distance;
+    std::vector<uint8_t> retrieval_mtp_agreement;
 };
 
 struct common_speculative_candidate {
@@ -187,6 +196,7 @@ public:
 
     void observe_ordinary(int64_t decode_time_us, llama_seq_id seq_id = 0);
     void observe_output_token(llama_token token, llama_seq_id seq_id = 0);
+    void exclude_selected_shadow(const common_speculative_candidate & candidate, llama_seq_id seq_id = 0);
     std::vector<common_speculative_shadow_event> take_shadow_events(llama_seq_id seq_id = 0);
     std::vector<common_speculative_hot_event> take_hot_events(llama_seq_id seq_id = 0);
     const common_speculative_shadow_metrics & shadow_metrics() const;
@@ -278,6 +288,7 @@ private:
 
     struct sequence_state {
         learning_state request_learning;
+        admission_stats request_retrieval_admission;
         std::string process_namespace;
         bool process_namespace_available = true;
         bool request_active = false;
@@ -313,6 +324,7 @@ private:
     static uint64_t cooldown_key(const common_speculative_candidate & candidate);
     static uint64_t hot_key(const common_speculative_candidate & candidate);
     static bool is_ngram(const common_speculative_candidate & candidate);
+    static bool is_retrieval(const common_speculative_candidate & candidate);
     static uint16_t ngram_span_begin(const common_speculative_candidate & candidate);
     static uint16_t next_hot_rung(uint16_t rung);
     static uint16_t previous_hot_rung(uint16_t rung);

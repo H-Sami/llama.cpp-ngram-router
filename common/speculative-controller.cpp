@@ -255,6 +255,9 @@ uint32_t common_speculative_controller::verification_shape_key(const common_spec
 }
 
 uint64_t common_speculative_controller::context_key(const common_speculative_candidate & candidate) {
+    if (is_retrieval(candidate)) {
+        return (0x52ull << 56) | candidate.metadata.retrieval_evidence_key;
+    }
     const uint32_t context_bucket = common_speculative_controller::context_bucket(candidate);
 
     uint32_t agreement_bucket = 0;
@@ -277,6 +280,9 @@ uint32_t common_speculative_controller::admission_producer_id(const common_specu
 }
 
 uint64_t common_speculative_controller::admission_key(const common_speculative_candidate & candidate) {
+    if (is_retrieval(candidate)) {
+        return (0x53ull << 56) | candidate.metadata.retrieval_evidence_key;
+    }
     const uint32_t context_bucket = common_speculative_controller::context_bucket(candidate);
 
     uint64_t key = 1469598103934665603ull;
@@ -302,7 +308,12 @@ bool common_speculative_controller::is_ngram(const common_speculative_candidate 
         candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K ||
         candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V ||
         candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_MOD ||
-        candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_CACHE;
+        candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_CACHE ||
+        candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL;
+}
+
+bool common_speculative_controller::is_retrieval(const common_speculative_candidate & candidate) {
+    return candidate.type == COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL;
 }
 
 uint16_t common_speculative_controller::ngram_span_begin(const common_speculative_candidate & candidate) {
@@ -412,7 +423,8 @@ common_speculative_controller::admission_decision common_speculative_controller:
         return peer.type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP &&
             mtp_agreement >= std::min(peer.tokens.size(), candidate.tokens.size());
     });
-    const bool exploratory_trial = candidate.tokens.size() >= 16;
+    // Retrieval earns request-local trust from passive target outcomes before Vulkan verification.
+    const bool exploratory_trial = !is_retrieval(candidate) && candidate.tokens.size() >= 16;
     const bool provisional_consensus = mtp_complete && distinct_family_support(candidate, candidates, 8) >= 2;
     const bool trusted_consensus = mtp_complete && distinct_family_support(candidate, candidates, 32) >= 3;
     result.bootstrap = exploratory_trial || provisional_consensus || trusted_consensus;
@@ -508,6 +520,17 @@ common_speculative_controller::admission_decision common_speculative_controller:
     const auto request_it = request.find(key);
     if (request_it != request.end()) {
         apply_request(evaluate(request_it->second));
+    }
+    if (is_retrieval(candidate) &&
+            !candidate.metadata.retrieval_match_length.empty() &&
+            !candidate.metadata.retrieval_source_support.empty() &&
+            !candidate.metadata.retrieval_dominance_permille.empty() &&
+            candidate.metadata.retrieval_match_length.front() >= 16 &&
+            (candidate.metadata.retrieval_source_support.front() >= 2 ||
+                candidate.metadata.retrieval_match_length.front() >= 32) &&
+            candidate.metadata.retrieval_dominance_permille.front() >= 900) {
+        // Carry target-proven trust across evidence tiers within one request.
+        apply_request(evaluate(sequence(seq_id).request_retrieval_admission));
     }
     return result;
 }
@@ -626,6 +649,26 @@ double common_speculative_controller::conditional_acceptance(
     if (value >= 0.0) return value;
     value = confidence(global, 1);
     if (value >= 0.0) return value;
+    if (is_retrieval(candidate)) {
+        const size_t begin = ngram_span_begin(candidate);
+        if (position >= begin) {
+            const size_t retrieval_position = position - begin;
+            if (retrieval_position < candidate.metadata.retrieval_dominance_permille.size()) {
+                const double dominance = candidate.metadata.retrieval_dominance_permille[retrieval_position] / 1000.0;
+                const double match = std::min(1.0, candidate.metadata.retrieval_match_length[retrieval_position] / 24.0);
+                const double support = std::min(1.0, candidate.metadata.retrieval_source_support[retrieval_position] / 4.0);
+                const double mtp = candidate.metadata.retrieval_mtp_agreement[retrieval_position] ? 0.10 : 0.0;
+                if (candidate.metadata.retrieval_match_length[retrieval_position] >= 32 &&
+                        (candidate.metadata.retrieval_source_support[retrieval_position] >= 2 ||
+                            candidate.metadata.retrieval_match_length[retrieval_position] >= 48) &&
+                        candidate.metadata.retrieval_dominance_permille[retrieval_position] >= 950) {
+                    // Long unambiguous matches use a stronger survival prior.
+                    return candidate.metadata.retrieval_mtp_agreement[retrieval_position] ? 0.99 : 0.985;
+                }
+                return std::clamp(0.30 + 0.30 * dominance + 0.15 * match + 0.10 * support + mtp, 0.35, 0.95);
+            }
+        }
+    }
     return 0.5;
 }
 
@@ -762,10 +805,48 @@ common_speculative_selection common_speculative_controller::select(
         if (candidate.type != COMMON_SPECULATIVE_TYPE_DRAFT_MTP && admission.verification_cap > 0) {
             maximum_length = std::min<uint16_t>(maximum_length, admission.verification_cap);
         }
-        const uint16_t minimum_length = candidate.type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP || admission.level == 1
-            ? maximum_length
-            : 1;
-        for (uint16_t length = minimum_length; length <= maximum_length; ++length) {
+        std::vector<uint16_t> lengths;
+        if (is_retrieval(candidate)) {
+            const size_t evidence_length = std::min({
+                candidate.metadata.retrieval_dominance_permille.size(),
+                candidate.metadata.retrieval_source_support.size(),
+                candidate.metadata.retrieval_source_distance.size(),
+                (size_t) maximum_length,
+            });
+            for (size_t position = 1; position < evidence_length; ++position) {
+                const bool ambiguous = candidate.metadata.retrieval_dominance_permille[position] < 600;
+                const bool support_collapse = position >= 3 &&
+                    candidate.metadata.retrieval_source_support[position] <
+                        candidate.metadata.retrieval_source_support[position - 1];
+                const bool source_jump = position >= 3 &&
+                    candidate.metadata.retrieval_source_distance[position] >
+                        candidate.metadata.retrieval_source_distance[position - 1] + 32;
+                if (ambiguous || (support_collapse && source_jump)) {
+                    maximum_length = std::min<uint16_t>(maximum_length, position);
+                    break;
+                }
+            }
+            if (maximum_length < 3) {
+                continue;
+            }
+            static const uint16_t rungs[] = { 3, 8, 12, 16, 24, 32, 48 };
+            for (const uint16_t rung : rungs) {
+                if (rung <= maximum_length && (admission.verification_cap == 0 || rung <= admission.verification_cap)) {
+                    lengths.push_back(rung);
+                }
+            }
+            if (lengths.empty() && maximum_length > 0) {
+                lengths.push_back(maximum_length);
+            }
+        } else {
+            const uint16_t minimum_length = candidate.type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP || admission.level == 1
+                ? maximum_length
+                : 1;
+            for (uint16_t length = minimum_length; length <= maximum_length; ++length) {
+                lengths.push_back(length);
+            }
+        }
+        for (const uint16_t length : lengths) {
             const double utility = score_prefix(candidate, length, seq_id);
             if (utility > best) {
                 best = utility;
@@ -810,7 +891,7 @@ common_speculative_selection common_speculative_controller::select(
             shadow_metrics_.trusted_decisions++;
         }
 
-        if (admission.level == 2) {
+        if (admission.level == 2 && !is_retrieval(selected)) {
             const uint64_t key = hot_key(selected);
             result.hot_key = key;
             const auto hot = state.hot_regions.find(key);
@@ -886,6 +967,40 @@ void common_speculative_controller::observe(
                 failure.next_observation = state.request_observations + cooldown;
             } else if (n_accepted > mtp_length) {
                 state.challenger_cooldowns.erase(key);
+            }
+
+            if (is_retrieval(candidate)) {
+                const size_t begin = std::min<size_t>(ngram_span_begin(candidate), candidate.tokens.size());
+                if (n_accepted >= begin) {
+                    const size_t proposed = candidate.tokens.size() - begin;
+                    const size_t accepted = std::min(n_accepted, candidate.tokens.size()) - begin;
+                    const bool retrieval_mismatch = mismatch_observed && n_accepted >= begin;
+                    const bool success_8 = proposed >= 8 && accepted >= 8;
+                    const bool failure_8 = proposed >= 8 && retrieval_mismatch && accepted < 8;
+                    const bool success_16 = proposed >= 16 && accepted >= 16;
+                    const bool failure_16 = proposed >= 16 && retrieval_mismatch && accepted < 16;
+                    const auto update_admission = [&](admission_stats & admission) {
+                        if (success_8 || failure_8) {
+                            admission.survived_8 = 1.0 + decay_ * (admission.survived_8 - 1.0) + (success_8 ? 1.0 : 0.0);
+                            admission.failed_8 = 1.0 + decay_ * (admission.failed_8 - 1.0) + (failure_8 ? 1.0 : 0.0);
+                            admission.outcomes_8++;
+                        }
+                        if (success_16 || failure_16) {
+                            admission.survived_16 = 1.0 + decay_ * (admission.survived_16 - 1.0) + (success_16 ? 1.0 : 0.0);
+                            admission.failed_16 = 1.0 + decay_ * (admission.failed_16 - 1.0) + (failure_16 ? 1.0 : 0.0);
+                            admission.outcomes_16++;
+                        }
+                    };
+                    if (success_8 || failure_8 || success_16 || failure_16) {
+                        auto & request = state.request_learning.admissions[admission_key(candidate)];
+                        update_admission(request);
+                        update_admission(state.request_retrieval_admission);
+                        auto & persistent = learning(seq_id).admissions[admission_key(candidate)];
+                        if (&persistent != &request) {
+                            update_admission(persistent);
+                        }
+                    }
+                }
             }
 
             const auto pending = state.pending_hot;
@@ -979,12 +1094,13 @@ void common_speculative_controller::observe(
             update_acceptance(get_stats(context_key(candidate), seq_id), 0);
             update_acceptance(state.request_stats[candidate.producer_id], 0);
             update_acceptance(state.request_stats[context_key(candidate)], 0);
-        } else if (candidate.candidate_id == selected_candidate_id && n_observed > 16) {
+        } else if (candidate.candidate_id == selected_candidate_id && (is_retrieval(candidate) || n_observed > 16)) {
             const uint64_t producer_key = admission_producer_id(candidate);
-            update_acceptance(get_stats(producer_key, seq_id), 16);
-            update_acceptance(get_stats(context_key(candidate), seq_id), 16);
-            update_acceptance(state.request_stats[producer_key], 16);
-            update_acceptance(state.request_stats[context_key(candidate)], 16);
+            const size_t begin = is_retrieval(candidate) ? ngram_span_begin(candidate) : 16;
+            update_acceptance(get_stats(producer_key, seq_id), begin);
+            update_acceptance(get_stats(context_key(candidate), seq_id), begin);
+            update_acceptance(state.request_stats[producer_key], begin);
+            update_acceptance(state.request_stats[context_key(candidate)], begin);
         }
 
         if (candidate.metadata.proposal_time_us > 0) {
@@ -1134,6 +1250,9 @@ void common_speculative_controller::update_shadow_admission(
 
     auto & request = sequence(seq_id).request_learning.admissions[contributor.admission_key];
     update(request);
+    if (is_retrieval(contributor.candidate)) {
+        update(sequence(seq_id).request_retrieval_admission);
+    }
     auto & persistent = learning(seq_id).admissions[contributor.admission_key];
     if (&persistent != &request) {
         update(persistent);
@@ -1194,6 +1313,29 @@ void common_speculative_controller::observe_output_token(llama_token token, llam
             state.shadow_probes.erase(state.shadow_probes.begin() + i);
             continue;
         }
+        i++;
+    }
+}
+
+void common_speculative_controller::exclude_selected_shadow(
+        const common_speculative_candidate & candidate,
+        llama_seq_id seq_id) {
+    auto & state = sequence(seq_id);
+    const uint64_t selected_key = admission_key(candidate);
+    for (size_t i = 0; i < state.shadow_probes.size();) {
+        auto & probe = state.shadow_probes[i];
+        probe.contributors.erase(
+                std::remove_if(probe.contributors.begin(), probe.contributors.end(), [&](const auto & contributor) {
+                    return contributor.admission_key == selected_key;
+                }),
+                probe.contributors.end());
+        if (probe.contributors.empty()) {
+            state.shadow_events.push_back({ COMMON_SPECULATIVE_SHADOW_DROPPED, probe.probe_id, probe.candidate_id, probe.matched });
+            shadow_metrics_.dropped++;
+            state.shadow_probes.erase(state.shadow_probes.begin() + i);
+            continue;
+        }
+        probe.candidate_id = probe.contributors.front().candidate.candidate_id;
         i++;
     }
 }

@@ -4,6 +4,8 @@
 #include "common.h"
 #include "speculative-controller.h"
 
+#include <array>
+
 struct common_speculative;
 
 struct common_speculative_producer_metrics {
@@ -24,6 +26,17 @@ struct common_speculative_producer_metrics {
     uint64_t begin_time_us = 0;
     uint64_t draft_time_us = 0;
     uint64_t extension_time_us = 0;
+    uint64_t retrieval_queries = 0;
+    uint64_t retrieval_verified_matches = 0;
+    uint64_t retrieval_candidate_yield = 0;
+    uint64_t retrieval_selected_prefixes = 0;
+    uint64_t retrieval_accepted_tokens = 0;
+    uint64_t retrieval_rejected_short_history = 0;
+    uint64_t retrieval_rejected_no_hash_hit = 0;
+    uint64_t retrieval_rejected_collision = 0;
+    uint64_t retrieval_rejected_no_continuation = 0;
+    std::array<uint64_t, 4> retrieval_match_tiers = {};
+    std::array<uint64_t, 4> retrieval_support_tiers = {};
 };
 
 struct common_speculative_controller_metrics {

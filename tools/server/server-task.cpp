@@ -1684,6 +1684,29 @@ std::string server_task_result_metrics::to_metrics() {
         add_producer_counter("spec_controller_producer_begin_time_us_total", "Controller: Producer request initialization time in microseconds", [](const auto & p) { return p.begin_time_us; });
         add_producer_counter("spec_controller_producer_draft_time_us_total", "Controller: Producer draft time in microseconds", [](const auto & p) { return p.draft_time_us; });
         add_producer_counter("spec_controller_producer_extension_time_us_total", "Controller: Producer extension time in microseconds", [](const auto & p) { return p.extension_time_us; });
+        add_producer_counter("spec_retrieval_queries_total", "Retrieval: Index queries", [](const auto & p) { return p.retrieval_queries; });
+        add_producer_counter("spec_retrieval_verified_matches_total", "Retrieval: Hash hits verified against tokens", [](const auto & p) { return p.retrieval_verified_matches; });
+        add_producer_counter("spec_retrieval_candidate_yield_total", "Retrieval: Queries that yielded a candidate", [](const auto & p) { return p.retrieval_candidate_yield; });
+        add_producer_counter("spec_retrieval_selected_prefixes_total", "Retrieval: Selected standalone or fused prefixes", [](const auto & p) { return p.retrieval_selected_prefixes; });
+        add_producer_counter("spec_retrieval_accepted_tokens_total", "Retrieval: Target-accepted tokens", [](const auto & p) { return p.retrieval_accepted_tokens; });
+        add_producer_counter("spec_retrieval_rejected_short_history_total", "Retrieval: Queries rejected for short history", [](const auto & p) { return p.retrieval_rejected_short_history; });
+        add_producer_counter("spec_retrieval_rejected_no_hash_hit_total", "Retrieval: Queries rejected without an anchor hit", [](const auto & p) { return p.retrieval_rejected_no_hash_hit; });
+        add_producer_counter("spec_retrieval_rejected_collision_total", "Retrieval: Hash hits rejected by token verification", [](const auto & p) { return p.retrieval_rejected_collision; });
+        add_producer_counter("spec_retrieval_rejected_no_continuation_total", "Retrieval: Verified matches without a continuation", [](const auto & p) { return p.retrieval_rejected_no_continuation; });
+        prometheus << "# HELP llamacpp:spec_retrieval_match_tier_total Retrieval candidates by bounded match-length tier\n"
+                   << "# TYPE llamacpp:spec_retrieval_match_tier_total counter\n"
+                   << "# HELP llamacpp:spec_retrieval_support_tier_total Retrieval candidates by bounded source-support tier\n"
+                   << "# TYPE llamacpp:spec_retrieval_support_tier_total counter\n";
+        for (size_t tier = 0; tier < 4; ++tier) {
+            prometheus << "llamacpp:spec_retrieval_match_tier_total{tier=\"" << tier << "\"} ";
+            uint64_t value = 0;
+            for (const auto & producer : controller.producers) value += producer.retrieval_match_tiers[tier];
+            prometheus << value << "\n";
+            prometheus << "llamacpp:spec_retrieval_support_tier_total{tier=\"" << tier << "\"} ";
+            value = 0;
+            for (const auto & producer : controller.producers) value += producer.retrieval_support_tiers[tier];
+            prometheus << value << "\n";
+        }
     }
 
     // labeled counter: one time series per draft position

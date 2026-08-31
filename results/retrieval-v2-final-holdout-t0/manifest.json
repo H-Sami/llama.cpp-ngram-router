@@ -1,0 +1,193 @@
+{
+  "configs": [
+    {
+      "description": "MTP-only baseline on the retrieval build.",
+      "env": {
+        "SPEC_CONTROLLER": "off",
+        "SPEC_TYPES": "draft-mtp"
+      },
+      "name": "mtp",
+      "suites": [
+        "smoke",
+        "core",
+        "full"
+      ]
+    },
+    {
+      "description": "Frozen current Q3 n-gram controller and binary.",
+      "env": {
+        "LLAMA_SERVER": "/home/pc/Desktop/ngram-project/llama.cpp-stage5-port/build-vulkan/bin/llama-server",
+        "SPEC_CONTROLLER": "adaptive",
+        "SPEC_TYPES": "draft-mtp,ngram-cache,ngram-simple,ngram-mod,ngram-map-k,ngram-map-k4v"
+      },
+      "name": "frozen_current",
+      "suites": [
+        "smoke",
+        "core",
+        "full"
+      ]
+    },
+    {
+      "description": "Second-generation multi-anchor retrieval finalist with trusted MTP bypass.",
+      "env": {
+        "LLAMA_SERVER": "/home/pc/Work/llama.cpp-retrieval/build-vulkan-retrieval-v2/bin/llama-server",
+        "NGRAM_RETRIEVAL_MAX": "48",
+        "SPEC_CONTROLLER": "adaptive",
+        "SPEC_TYPES": "draft-mtp,ngram-retrieval"
+      },
+      "name": "retrieval_v2",
+      "suites": [
+        "smoke",
+        "core",
+        "full"
+      ]
+    }
+  ],
+  "controller_trace": true,
+  "created_utc": "20260831T200847Z",
+  "ctx_size": 81920,
+  "launcher": "/home/pc/Work/llama.cpp-retrieval/benchmark/Q3-retrieval.sh",
+  "launcher_sha256": "8d8c359eb275b8f7555ce5e2f148707e00e2a49db0b74555b8e0c3c822055b5d",
+  "llama_cpp_revision": null,
+  "persistent_server_within_config": true,
+  "repetitions": 2,
+  "request_order": "round-robin",
+  "sampling": {
+    "min_p": 0.0,
+    "temperature": 0.0,
+    "top_k": 20,
+    "top_p": 0.95
+  },
+  "seed": 42,
+  "server_scope": "config",
+  "shuffle_configs": false,
+  "shuffle_scope": "campaign",
+  "source_launcher_sha256": "b109bd5d73bfcb96407dc60a942aaed34bf00986f9ba914bc1d61d6048601ecb",
+  "suite": "full",
+  "vary_seed_by_repetition": false,
+  "workloads": [
+    {
+      "description": "Novel reasoning with little useful exact recurrence.",
+      "expected_affinity": [
+        "draft-mtp",
+        "ordinary"
+      ],
+      "max_tokens": 160,
+      "name": "novel_reasoning",
+      "prompt": "A warehouse has four loading bays. Bay A handles 18 crates per hour, B handles 23, C handles 17, and D handles 29. A maintenance window closes B for 35 minutes and halves D's rate for the final 20 minutes. Starting from an empty queue, explain how many crates can be handled in a two-hour shift. State every assumption and check the arithmetic.",
+      "tags": [
+        "smoke",
+        "core",
+        "negative-control",
+        "reasoning"
+      ]
+    },
+    {
+      "description": "A long token sequence is repeated using rolling next-token matches.",
+      "expected_affinity": [
+        "ngram-mod"
+      ],
+      "max_tokens": 192,
+      "name": "rolling_long_repeat",
+      "prompt": "Repeat the deployment stanza one more time, exactly, beginning at the unfinished third copy. Output text only.\n\nDEPLOYMENT DELTA START\nservice_name: ledger-worker\nreplica_count: 6\nhealth_path: /internal/ready\nstartup_grace_seconds: 45\nshutdown_grace_seconds: 30\ntelemetry_mode: detailed\nregion_preference: central-1\nfallback_region: central-2\nrelease_channel: stable\nDEPLOYMENT DELTA END\n\nDEPLOYMENT DELTA START\nservice_name: ledger-worker\nreplica_count: 6\nhealth_path: /internal/ready\nstartup_grace_seconds: 45\nshutdown_grace_seconds: 30\ntelemetry_mode: detailed\nregion_preference: central-1\nfallback_region: central-2\nrelease_channel: stable\nDEPLOYMENT DELTA END\n\nDEPLOYMENT DELTA START\n",
+      "tags": [
+        "core",
+        "long-repetition",
+        "ngram-mod"
+      ]
+    },
+    {
+      "description": "Similar blocks contain consequential differences and punish false matches.",
+      "expected_affinity": [
+        "draft-mtp",
+        "abstain"
+      ],
+      "max_tokens": 160,
+      "name": "near_match_trap",
+      "prompt": "Write the production block. Be careful: it differs from staging. Output YAML only.\n\nstaging:\n  database: ledger_stage\n  replicas: 1\n  destructive_migrations: true\n  backup_required: false\n  timeout_seconds: 15\n\nproduction:\n  database: ledger_prod\n  replicas: 5\n  destructive_migrations: false\n  backup_required: true\n  timeout_seconds: 60\n\nNow emit production again under the key production_copy.",
+      "tags": [
+        "core",
+        "negative-control",
+        "near-match"
+      ]
+    },
+    {
+      "description": "Repeated structured agent calls resembling a local workflow.",
+      "expected_affinity": [
+        "ngram-mod",
+        "ngram-map-k",
+        "draft-mtp+ngram"
+      ],
+      "max_tokens": 192,
+      "name": "agent_tool_loop",
+      "prompt": "Continue the tool-call sequence for files delta.cpp, epsilon.cpp, and zeta.cpp. Preserve the exact JSON shape and output JSONL only.\n\n{\"tool\":\"inspect_file\",\"arguments\":{\"path\":\"alpha.cpp\",\"line_start\":1,\"line_end\":200}}\n{\"tool\":\"inspect_file\",\"arguments\":{\"path\":\"beta.cpp\",\"line_start\":1,\"line_end\":200}}\n{\"tool\":\"inspect_file\",\"arguments\":{\"path\":\"gamma.cpp\",\"line_start\":1,\"line_end\":200}}\n",
+      "tags": [
+        "core",
+        "agent",
+        "structured"
+      ]
+    },
+    {
+      "description": "A realistic repetitive code transformation.",
+      "expected_affinity": [
+        "ngram-simple",
+        "ngram-mod",
+        "draft-mtp+ngram"
+      ],
+      "max_tokens": 256,
+      "name": "code_rewrite",
+      "prompt": "Continue converting the remaining assignments to guarded assignments. Output code only.\n\nBefore:\nconfig.host = source.host;\nconfig.port = source.port;\nconfig.user = source.user;\nconfig.timeout = source.timeout;\nconfig.retries = source.retries;\nconfig.region = source.region;\n\nAfter:\nif (source.host) config.host = source.host;\nif (source.port) config.port = source.port;\nif (source.user) config.user = source.user;\n",
+      "tags": [
+        "core",
+        "coding",
+        "rewrite"
+      ]
+    },
+    {
+      "description": "JSON-schema constrained generation through the completion endpoint.",
+      "expected_affinity": [
+        "draft-mtp",
+        "abstain"
+      ],
+      "json_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "healthy": {
+            "type": "boolean"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "replicas": {
+            "maximum": 9,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "service": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "healthy",
+          "replicas",
+          "regions"
+        ],
+        "type": "object"
+      },
+      "max_tokens": 160,
+      "name": "json_schema",
+      "prompt": "Return a JSON object describing a healthy ledger service with three replicas in the central and backup regions.",
+      "tags": [
+        "full",
+        "grammar",
+        "system"
+      ]
+    }
+  ]
+}

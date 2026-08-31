@@ -1,0 +1,193 @@
+{
+  "workloads": [
+    {
+      "name": "novel_reasoning",
+      "description": "Novel reasoning with little useful exact recurrence.",
+      "expected_affinity": ["draft-mtp", "ordinary"],
+      "tags": ["smoke", "core", "negative-control", "reasoning"],
+      "max_tokens": 160,
+      "prompt": "A warehouse has four loading bays. Bay A handles 18 crates per hour, B handles 23, C handles 17, and D handles 29. A maintenance window closes B for 35 minutes and halves D's rate for the final 20 minutes. Starting from an empty queue, explain how many crates can be handled in a two-hour shift. State every assumption and check the arithmetic."
+    },
+    {
+      "name": "exact_local_copy",
+      "description": "A nearby exact block is repeated and then started a third time.",
+      "expected_affinity": ["ngram-simple", "ngram-mod"],
+      "tags": ["smoke", "core", "copy", "local-repetition"],
+      "max_tokens": 128,
+      "prompt": "Continue the third block exactly like the first two. Output code only.\n\nrecord_01 = normalize(source[1])\nrecord_02 = normalize(source[2])\nrecord_03 = normalize(source[3])\nrecord_04 = normalize(source[4])\nrecord_05 = normalize(source[5])\nrecord_06 = normalize(source[6])\ncommit(records)\n\nrecord_01 = normalize(source[1])\nrecord_02 = normalize(source[2])\nrecord_03 = normalize(source[3])\nrecord_04 = normalize(source[4])\nrecord_05 = normalize(source[5])\nrecord_06 = normalize(source[6])\ncommit(records)\n\nrecord_01 = normalize(source[1])\n"
+    },
+    {
+      "name": "consistent_key",
+      "description": "The same long key repeatedly has one continuation.",
+      "expected_affinity": ["ngram-map-k"],
+      "tags": ["core", "consistent-continuation", "map-k"],
+      "max_tokens": 128,
+      "prompt": "Continue the final record from the established data pattern.\n\nBEGIN CONFIGURATION ALPHA VERSION SEVEN IDENTIFIER BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL INDIA JULIET KILO\ntimeout_ms = 4500\nretry_count = 3\nbackoff_mode = exponential\naudit_enabled = true\nEND CONFIGURATION ALPHA\n\nBEGIN CONFIGURATION ALPHA VERSION SEVEN IDENTIFIER BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL INDIA JULIET KILO\ntimeout_ms = 4500\nretry_count = 3\nbackoff_mode = exponential\naudit_enabled = true\nEND CONFIGURATION ALPHA\n\nBEGIN CONFIGURATION ALPHA VERSION SEVEN IDENTIFIER BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL INDIA JULIET KILO\ntimeout_ms = 4500\nretry_count = 3\nbackoff_mode = exponential\naudit_enabled = true\nEND CONFIGURATION ALPHA\n\nBEGIN CONFIGURATION ALPHA VERSION SEVEN IDENTIFIER BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL INDIA JULIET KILO\n"
+    },
+    {
+      "name": "ambiguous_key",
+      "description": "One key has several observed continuations, with a dominant value.",
+      "expected_affinity": ["ngram-map-k4v"],
+      "tags": ["core", "ambiguous-continuation", "map-k4v"],
+      "max_tokens": 128,
+      "prompt": "Continue the final policy with the statistically dominant continuation from the data.\n\nROUTE BLUE REGION CENTRAL POLICY IDENTIFIER ALPHA BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL INDIA JULIET\npriority = high\nretries = 5\nqueue = primary\nstatus = production\n\nROUTE BLUE REGION CENTRAL POLICY IDENTIFIER ALPHA BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL INDIA JULIET\npriority = high\nretries = 5\nqueue = primary\nstatus = production\n\nROUTE BLUE REGION CENTRAL POLICY IDENTIFIER ALPHA BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL INDIA JULIET\npriority = high\nretries = 5\nqueue = primary\nstatus = production\n\nROUTE BLUE REGION CENTRAL POLICY IDENTIFIER ALPHA BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL INDIA JULIET\npriority = low\nretries = 1\nqueue = overflow\nstatus = maintenance\n\nROUTE BLUE REGION CENTRAL POLICY IDENTIFIER ALPHA BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL INDIA JULIET\n"
+    },
+    {
+      "name": "rolling_long_repeat",
+      "description": "A long token sequence is repeated using rolling next-token matches.",
+      "expected_affinity": ["ngram-mod"],
+      "tags": ["core", "long-repetition", "ngram-mod"],
+      "max_tokens": 192,
+      "prompt": "Repeat the deployment stanza one more time, exactly, beginning at the unfinished third copy. Output text only.\n\nDEPLOYMENT DELTA START\nservice_name: ledger-worker\nreplica_count: 6\nhealth_path: /internal/ready\nstartup_grace_seconds: 45\nshutdown_grace_seconds: 30\ntelemetry_mode: detailed\nregion_preference: central-1\nfallback_region: central-2\nrelease_channel: stable\nDEPLOYMENT DELTA END\n\nDEPLOYMENT DELTA START\nservice_name: ledger-worker\nreplica_count: 6\nhealth_path: /internal/ready\nstartup_grace_seconds: 45\nshutdown_grace_seconds: 30\ntelemetry_mode: detailed\nregion_preference: central-1\nfallback_region: central-2\nrelease_channel: stable\nDEPLOYMENT DELTA END\n\nDEPLOYMENT DELTA START\n"
+    },
+    {
+      "name": "fusion_bridge",
+      "description": "MTP must first predict a marker before an n-gram continuation becomes available.",
+      "expected_affinity": ["draft-mtp+ngram"],
+      "tags": ["core", "fusion", "bridge"],
+      "max_tokens": 160,
+      "prompt": "A previous report used this exact canonical section:\n\nCANONICAL RESULT SECTION\nchecks_passed = 128\nchecks_failed = 0\ncoverage_percent = 97.4\nrelease_decision = APPROVED\nEND CANONICAL RESULT SECTION\n\nPrepare the final answer by reproducing the canonical result section exactly. Begin with its heading and output nothing else."
+    },
+    {
+      "name": "regime_change",
+      "description": "A repeated passage is followed by a request for novel analysis.",
+      "expected_affinity": ["ngram", "draft-mtp", "ordinary"],
+      "tags": ["core", "transition", "decay"],
+      "max_tokens": 224,
+      "prompt": "First reproduce the template exactly, then add a new paragraph explaining one operational risk that is not mentioned in it.\n\nTEMPLATE START\nOwner: Platform Operations\nCadence: Every six hours\nEscalation: After two consecutive failures\nEvidence: Attach the execution identifier\nTEMPLATE END\n\nUse the template above now, followed by the new analysis paragraph."
+    },
+    {
+      "name": "near_match_trap",
+      "description": "Similar blocks contain consequential differences and punish false matches.",
+      "expected_affinity": ["draft-mtp", "abstain"],
+      "tags": ["core", "negative-control", "near-match"],
+      "max_tokens": 160,
+      "prompt": "Write the production block. Be careful: it differs from staging. Output YAML only.\n\nstaging:\n  database: ledger_stage\n  replicas: 1\n  destructive_migrations: true\n  backup_required: false\n  timeout_seconds: 15\n\nproduction:\n  database: ledger_prod\n  replicas: 5\n  destructive_migrations: false\n  backup_required: true\n  timeout_seconds: 60\n\nNow emit production again under the key production_copy."
+    },
+    {
+      "name": "circuit_recovery",
+      "description": "A consensus continuation is deliberately contradicted before a later exact-copy phase.",
+      "expected_affinity": ["draft-mtp", "abstain", "cooldown", "ngram"],
+      "tags": ["full", "transition", "circuit-breaker", "adversarial"],
+      "max_tokens": 256,
+      "prompt": "Historical records:\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nWrite one new CASE in exactly the same format, but set status to degraded, owner to incident-response, and action to isolate-and-investigate. Then reproduce the following runbook exactly twice. Output only the case and the two runbook copies.\n\nRUNBOOK START\ncheck: payment-error-rate\nwindow: fifteen-minutes\nthreshold: five-percent\nescalation: incident-commander\nnotification: operations-channel\nrollback: last-known-good\nRUNBOOK END"
+    },
+    {
+      "name": "cooldown_recovery_long",
+      "description": "A near-useful challenger failure is followed by a long exact-copy phase for cooldown and readmission.",
+      "expected_affinity": ["ngram", "cooldown", "draft-mtp", "ngram-recovery"],
+      "tags": ["full", "transition", "circuit-breaker", "long-output"],
+      "max_tokens": 1024,
+      "prompt": "Historical records:\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nCASE START\nservice: payments\nstatus: stable\nowner: platform-ops\naction: continue-normal-operation\nCASE END\n\nWrite one new CASE in exactly the same format, but set status to degraded, owner to incident-response, and action to isolate-and-investigate. Then reproduce the following runbook exactly sixteen times. Output only the case and the sixteen runbook copies.\n\nRUNBOOK START\ncheck: payment-error-rate\nwindow: fifteen-minutes\nthreshold: five-percent\nescalation: incident-commander\nnotification: operations-channel\nrollback: last-known-good\nRUNBOOK END"
+    },
+    {
+      "name": "agent_tool_loop",
+      "description": "Repeated structured agent calls resembling a local workflow.",
+      "expected_affinity": ["ngram-mod", "ngram-map-k", "draft-mtp+ngram"],
+      "tags": ["core", "agent", "structured"],
+      "max_tokens": 192,
+      "prompt": "Continue the tool-call sequence for files delta.cpp, epsilon.cpp, and zeta.cpp. Preserve the exact JSON shape and output JSONL only.\n\n{\"tool\":\"inspect_file\",\"arguments\":{\"path\":\"alpha.cpp\",\"line_start\":1,\"line_end\":200}}\n{\"tool\":\"inspect_file\",\"arguments\":{\"path\":\"beta.cpp\",\"line_start\":1,\"line_end\":200}}\n{\"tool\":\"inspect_file\",\"arguments\":{\"path\":\"gamma.cpp\",\"line_start\":1,\"line_end\":200}}\n"
+    },
+    {
+      "name": "code_rewrite",
+      "description": "A realistic repetitive code transformation.",
+      "expected_affinity": ["ngram-simple", "ngram-mod", "draft-mtp+ngram"],
+      "tags": ["core", "coding", "rewrite"],
+      "max_tokens": 256,
+      "prompt": "Continue converting the remaining assignments to guarded assignments. Output code only.\n\nBefore:\nconfig.host = source.host;\nconfig.port = source.port;\nconfig.user = source.user;\nconfig.timeout = source.timeout;\nconfig.retries = source.retries;\nconfig.region = source.region;\n\nAfter:\nif (source.host) config.host = source.host;\nif (source.port) config.port = source.port;\nif (source.user) config.user = source.user;\n"
+    },
+    {
+      "name": "long_agent_session",
+      "description": "A longer structured inspect, patch, and test agent workflow.",
+      "expected_affinity": ["ngram-mod", "ngram-map-k", "draft-mtp+ngram"],
+      "tags": ["full", "agent", "structured", "long-output"],
+      "max_tokens": 768,
+      "prompt": "Continue the workflow for delta.cpp, epsilon.cpp, zeta.cpp, eta.cpp, theta.cpp, iota.cpp, kappa.cpp, and lambda.cpp. For each file emit exactly three JSONL calls in this order: inspect_file, apply_guard_patch, run_unit_test. Preserve the demonstrated shapes, change only the path or target, and output JSONL only.\n\n{\"tool\":\"inspect_file\",\"arguments\":{\"path\":\"alpha.cpp\",\"line_start\":1,\"line_end\":240}}\n{\"tool\":\"apply_guard_patch\",\"arguments\":{\"path\":\"alpha.cpp\",\"guard\":\"is_ready\"}}\n{\"tool\":\"run_unit_test\",\"arguments\":{\"target\":\"alpha_test\",\"timeout_seconds\":120}}\n{\"tool\":\"inspect_file\",\"arguments\":{\"path\":\"beta.cpp\",\"line_start\":1,\"line_end\":240}}\n{\"tool\":\"apply_guard_patch\",\"arguments\":{\"path\":\"beta.cpp\",\"guard\":\"is_ready\"}}\n{\"tool\":\"run_unit_test\",\"arguments\":{\"target\":\"beta_test\",\"timeout_seconds\":120}}\n{\"tool\":\"inspect_file\",\"arguments\":{\"path\":\"gamma.cpp\",\"line_start\":1,\"line_end\":240}}\n{\"tool\":\"apply_guard_patch\",\"arguments\":{\"path\":\"gamma.cpp\",\"guard\":\"is_ready\"}}\n{\"tool\":\"run_unit_test\",\"arguments\":{\"target\":\"gamma_test\",\"timeout_seconds\":120}}\n"
+    },
+    {
+      "name": "long_code_migration",
+      "description": "A longer repetitive code migration with many related fields.",
+      "expected_affinity": ["ngram-simple", "ngram-mod", "draft-mtp+ngram"],
+      "tags": ["full", "coding", "rewrite", "long-output"],
+      "max_tokens": 640,
+      "prompt": "Continue the serializer for the remaining fields: timeout, retries, region, zone, protocol, compression, encryption, cache_mode, cache_size, queue_name, queue_depth, worker_count, batch_size, flush_interval, audit_mode, trace_level, health_path, ready_path, shutdown_grace, and startup_grace. Emit one line per field, preserve the exact syntax, and output code only.\n\nif (source.host.has_value()) output[\"host\"] = encode(*source.host);\nif (source.port.has_value()) output[\"port\"] = encode(*source.port);\nif (source.user.has_value()) output[\"user\"] = encode(*source.user);\n"
+    },
+    {
+      "name": "stop_sequence",
+      "description": "A repeated structured answer terminated by a caller stop sequence.",
+      "expected_affinity": ["ngram-mod", "draft-mtp"],
+      "tags": ["full", "stop-sequence", "system"],
+      "max_tokens": 256,
+      "stop": ["END REPORT"],
+      "prompt": "Reproduce the report exactly and finish with END REPORT. Output nothing else.\n\nREPORT START\nservice: ingestion\nstatus: healthy\nchecks: 24\nfailures: 0\nowner: platform\nEND REPORT\n"
+    },
+    {
+      "name": "json_schema",
+      "description": "JSON-schema constrained generation through the completion endpoint.",
+      "expected_affinity": ["draft-mtp", "abstain"],
+      "tags": ["full", "grammar", "system"],
+      "max_tokens": 160,
+      "json_schema": {
+        "type": "object",
+        "properties": {
+          "service": {"type": "string"},
+          "healthy": {"type": "boolean"},
+          "replicas": {"type": "integer", "minimum": 1, "maximum": 9},
+          "regions": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2}
+        },
+        "required": ["service", "healthy", "replicas", "regions"],
+        "additionalProperties": false
+      },
+      "prompt": "Return a JSON object describing a healthy ledger service with three replicas in the central and backup regions."
+    },
+    {
+      "name": "multi_stop_sequence",
+      "description": "Structured repeated output with two competing caller stop markers.",
+      "expected_affinity": ["ngram-mod", "draft-mtp"],
+      "tags": ["full", "stop-sequence", "system"],
+      "max_tokens": 256,
+      "stop": ["<END>", "<ABORT>"],
+      "prompt": "Repeat the completed deployment record exactly, then write <END>. Output nothing after the marker.\n\nDEPLOYMENT\nservice=ledger\nregion=central\nreplicas=3\nhealth=green\n<END>\n"
+    },
+    {
+      "name": "gbnf_grammar",
+      "description": "Small deterministic GBNF-constrained status record.",
+      "expected_affinity": ["draft-mtp", "abstain"],
+      "tags": ["full", "grammar", "system"],
+      "max_tokens": 96,
+      "grammar": "root ::= \"status=\" status \"\\nreplicas=\" replica \"\\nregion=\" region \"\\n\"\nstatus ::= \"healthy\" | \"degraded\"\nreplica ::= [1-9]\nregion ::= \"central\" | \"backup\"",
+      "prompt": "Output a healthy status record with three replicas in the central region."
+    },
+    {
+      "name": "nested_json_schema",
+      "description": "Nested enum, object, and fixed-array JSON-schema generation.",
+      "expected_affinity": ["draft-mtp", "abstain"],
+      "tags": ["full", "grammar", "system"],
+      "max_tokens": 224,
+      "json_schema": {
+        "type": "object",
+        "properties": {
+          "service": {"type": "string", "enum": ["ledger"]},
+          "deployment": {
+            "type": "object",
+            "properties": {
+              "state": {"type": "string", "enum": ["healthy", "degraded"]},
+              "replicas": {"type": "integer", "minimum": 1, "maximum": 5}
+            },
+            "required": ["state", "replicas"],
+            "additionalProperties": false
+          },
+          "regions": {
+            "type": "array",
+            "items": {"type": "string", "enum": ["central", "backup"]},
+            "minItems": 2,
+            "maxItems": 2
+          }
+        },
+        "required": ["service", "deployment", "regions"],
+        "additionalProperties": false
+      },
+      "prompt": "Return the ledger deployment as healthy with three replicas and regions central then backup."
+    }
+  ]
+}

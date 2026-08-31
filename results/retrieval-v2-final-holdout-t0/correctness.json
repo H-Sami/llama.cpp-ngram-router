@@ -1,0 +1,8 @@
+{
+  "comparisons": 24,
+  "mismatches": [],
+  "missing_reference": [],
+  "passed": true,
+  "reference": "mtp",
+  "within_config_instability": []
+}

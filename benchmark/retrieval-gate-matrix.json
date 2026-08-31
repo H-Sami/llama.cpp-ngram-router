@@ -1,0 +1,55 @@
+{
+  "configs": [
+    {
+      "name": "mtp",
+      "description": "MTP-only baseline on the retrieval build.",
+      "suites": ["smoke", "core", "full"],
+      "env": {
+        "SPEC_TYPES": "draft-mtp",
+        "SPEC_CONTROLLER": "off"
+      }
+    },
+    {
+      "name": "frozen_current",
+      "description": "Frozen current Q3 n-gram controller and binary.",
+      "suites": ["smoke", "core", "full"],
+      "env": {
+        "LLAMA_SERVER": "/home/pc/Desktop/ngram-project/llama.cpp-stage5-port/build-vulkan/bin/llama-server",
+        "SPEC_TYPES": "draft-mtp,ngram-cache,ngram-simple,ngram-mod,ngram-map-k,ngram-map-k4v",
+        "SPEC_CONTROLLER": "adaptive"
+      }
+    },
+    {
+      "name": "retrieval",
+      "description": "Single retrieval producer with mandatory MTP fallback.",
+      "suites": ["smoke", "core", "full"],
+      "env": {
+        "SPEC_TYPES": "draft-mtp,ngram-retrieval",
+        "SPEC_CONTROLLER": "adaptive",
+        "NGRAM_RETRIEVAL_MAX": "48"
+      }
+    },
+    {
+      "name": "retrieval_v2",
+      "description": "Second-generation multi-anchor retrieval finalist with trusted MTP bypass.",
+      "suites": ["smoke", "core", "full"],
+      "env": {
+        "LLAMA_SERVER": "/home/pc/Work/llama.cpp-retrieval/build-vulkan-retrieval-v2/bin/llama-server",
+        "SPEC_TYPES": "draft-mtp,ngram-retrieval",
+        "SPEC_CONTROLLER": "adaptive",
+        "NGRAM_RETRIEVAL_MAX": "48"
+      }
+    },
+    {
+      "name": "hybrid_v2",
+      "description": "Second-generation retrieval plus the frozen legacy producer portfolio under one controller.",
+      "suites": ["smoke", "core", "full"],
+      "env": {
+        "LLAMA_SERVER": "/home/pc/Work/llama.cpp-retrieval/build-vulkan-retrieval-v2/bin/llama-server",
+        "SPEC_TYPES": "draft-mtp,ngram-cache,ngram-simple,ngram-mod,ngram-map-k,ngram-map-k4v,ngram-retrieval",
+        "SPEC_CONTROLLER": "adaptive",
+        "NGRAM_RETRIEVAL_MAX": "48"
+      }
+    }
+  ]
+}

@@ -123,6 +123,17 @@ See:
 
 - #5479, #6828, #6848
 
+### n-gram Retrieval (`ngram-retrieval`)
+
+This opt-in implementation indexes independent 4-, 8-, and 16-token anchors within one request. Hash hits are verified against the token history, deduplicated, and combined with a prefix trie. Each index retains at most 32 recent positions per anchor and is cleared at request end. Per-position evidence bounds verification at ambiguous branches and source discontinuities. MTP remains available on every cycle so retrieval rejection cannot leave the controller without a speculative fallback.
+
+```bash
+llama-server ... --spec-type draft-mtp,ngram-retrieval --spec-controller adaptive --spec-ngram-retrieval-n-max 48
+```
+
+The maximum retrieval draft length must be between 8 and 48 tokens.
+Branch policy is an internal development-time choice. Run `benchmark/retrieval_evaluator.py` for coverage and calibration diagnostics, then `benchmark/select-retrieval-policy.py` to select the fastest policy that meets the configured acceptance floor and generate the policy header.
+
 ### n-gram Map (`ngram-simple`, `ngram-map-*`)
 
 These implementations search the token history for patterns and use matching sequences as draft candidates.
@@ -224,7 +235,7 @@ Use exactly one of these options:
 ### General Speculative Parameters
 
 ```
---spec-type [none|draft-simple|draft-eagle3|draft-dflash|draft-dspark|draft-mtp|ngram-cache|ngram-simple|ngram-map-k|ngram-map-k4v|ngram-mod]
+--spec-type [none|draft-simple|draft-eagle3|draft-dflash|draft-dspark|draft-mtp|ngram-cache|ngram-simple|ngram-map-k|ngram-map-k4v|ngram-mod|ngram-retrieval]
                                         comma-separated list of types of speculative decoding to use
                                         (default: none)
                                         (env: LLAMA_ARG_SPEC_TYPE)

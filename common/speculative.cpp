@@ -8,6 +8,7 @@
 #include "ngram-cache.h"
 #include "ngram-map.h"
 #include "ngram-mod.h"
+#include "ngram-retrieval.h"
 #include "sampling.h"
 
 #include "../src/llama-ext.h" // staging API: llama_set_embeddings_nextn / llama_get_embeddings_nextn_ith (used by MTP)
@@ -41,8 +42,9 @@ const std::map<std::string, common_speculative_type> common_speculative_type_fro
     {"ngram-simple",  COMMON_SPECULATIVE_TYPE_NGRAM_SIMPLE},
     {"ngram-map-k",   COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K},
     {"ngram-map-k4v", COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V},
-    {"ngram-mod",     COMMON_SPECULATIVE_TYPE_NGRAM_MOD},
-    {"ngram-cache",   COMMON_SPECULATIVE_TYPE_NGRAM_CACHE}
+    {"ngram-mod",       COMMON_SPECULATIVE_TYPE_NGRAM_MOD},
+    {"ngram-cache",     COMMON_SPECULATIVE_TYPE_NGRAM_CACHE},
+    {"ngram-retrieval", COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL}
 };
 
 static std::string common_speculative_get_devices_str(const std::vector<ggml_backend_dev_t> & devices) {
@@ -175,6 +177,9 @@ struct common_speculative_impl {
 
     virtual void begin(llama_seq_id seq_id, const llama_tokens & prompt) = 0;
 
+    virtual void end(llama_seq_id /*seq_id*/) {
+    }
+
     virtual bool process(const llama_batch & batch) = 0;
 
     virtual void draft(common_speculative_draft_params_vec & dparams) = 0;
@@ -186,6 +191,13 @@ struct common_speculative_impl {
             int32_t /*n_max*/,
             llama_tokens & /*result*/,
             common_speculative_span * /*span*/) {
+    }
+
+    virtual void fill_metadata(llama_seq_id /*seq_id*/, common_speculative_candidate_metadata & /*metadata*/) const {
+    }
+
+    virtual const common_ngram_retrieval_metrics * retrieval_metrics(llama_seq_id /*seq_id*/) const {
+        return nullptr;
     }
 
     virtual void accept(llama_seq_id seq_id, uint16_t n_accepted, bool is_other) = 0;
@@ -2353,6 +2365,115 @@ struct common_speculative_impl_ngram_cache : public common_speculative_impl {
     }
 };
 
+struct common_speculative_impl_ngram_retrieval : public common_speculative_impl {
+    struct seq_info {
+        common_ngram_retrieval retrieval;
+        common_ngram_retrieval_result last;
+
+        explicit seq_info(uint16_t n_max) : retrieval(n_max) {}
+    };
+
+    std::vector<seq_info> sinfos;
+
+    common_speculative_impl_ngram_retrieval(const common_params_speculative & params, uint32_t n_seq)
+        : common_speculative_impl(COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL, n_seq, params.ngram_retrieval.n_max) {
+        sinfos.reserve(n_seq);
+        for (uint32_t i = 0; i < n_seq; ++i) {
+            sinfos.emplace_back(params.ngram_retrieval.n_max);
+        }
+        SPC_TRC("adding speculative implementation 'ngram-retrieval', n_max=%d\n", n_max);
+    }
+
+    void begin(llama_seq_id seq_id, const llama_tokens & prompt) override {
+        sinfos.at(seq_id).retrieval.reset(prompt);
+        sinfos.at(seq_id).last = {};
+    }
+
+    void end(llama_seq_id seq_id) override {
+        sinfos.at(seq_id).retrieval.reset();
+        sinfos.at(seq_id).last = {};
+    }
+
+    bool process(const llama_batch & /*batch*/) override {
+        return true;
+    }
+
+    void draft(common_speculative_draft_params_vec & dparams) override {
+        for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) n_seq; ++seq_id) {
+            auto & dp = dparams[seq_id];
+            if (!dp.drafting) {
+                continue;
+            }
+            auto & sinfo = sinfos[seq_id];
+            sinfo.last = sinfo.retrieval.query(*dp.prompt, dp.id_last);
+            *dp.result = sinfo.last.tokens;
+        }
+    }
+
+    void draft_extension(
+            llama_seq_id seq_id,
+            const llama_tokens & prompt,
+            llama_token id_last,
+            int32_t n_limit,
+            llama_tokens & result,
+            common_speculative_span * span) override {
+        auto & sinfo = sinfos[seq_id];
+        // MTP extensions are hypothetical until target verification. Query
+        // them against the canonical request index without installing the
+        // speculative suffix into persistent retrieval state.
+        sinfo.last = sinfo.retrieval.query_transient(prompt, id_last);
+        result = sinfo.last.tokens;
+        if (n_limit >= 0 && (int32_t) result.size() > n_limit) {
+            result.resize(n_limit);
+            sinfo.last.tokens.resize(n_limit);
+            sinfo.last.evidence.resize(n_limit);
+        }
+        if (span != nullptr && !result.empty()) {
+            span->feedback_valid = true;
+            span->feedback_key = sinfo.last.evidence_key;
+            span->feedback_value = sinfo.last.policy;
+        }
+    }
+
+    void accept(llama_seq_id seq_id, uint16_t n_accepted, bool is_other) override {
+        if (is_other) {
+            return;
+        }
+        auto & sinfo = sinfos[seq_id];
+        sinfo.retrieval.observe(sinfo.last.policy, sinfo.last.tokens.size(), n_accepted);
+    }
+
+    void accept_extension(
+            llama_seq_id seq_id,
+            uint16_t n_accepted,
+            const common_speculative_span & span) override {
+        auto & sinfo = sinfos[seq_id];
+        const auto policy = span.feedback_valid && span.feedback_value < COMMON_NGRAM_RETRIEVAL_POLICY_COUNT
+            ? (common_ngram_retrieval_policy) span.feedback_value
+            : sinfo.last.policy;
+        sinfo.retrieval.observe(policy, span.end - span.begin, n_accepted);
+    }
+
+    void fill_metadata(llama_seq_id seq_id, common_speculative_candidate_metadata & metadata) const override {
+        const auto & last = sinfos.at(seq_id).last;
+        metadata.retrieval_evidence_key = last.evidence_key;
+        metadata.retrieval_verified_matches = last.verified_matches;
+        metadata.retrieval_alternatives = last.alternatives;
+        metadata.retrieval_policy = last.policy;
+        for (const auto & evidence : last.evidence) {
+            metadata.retrieval_match_length.push_back(evidence.match_length);
+            metadata.retrieval_source_support.push_back(evidence.source_support);
+            metadata.retrieval_dominance_permille.push_back(evidence.dominance_permille);
+            metadata.retrieval_source_distance.push_back(evidence.source_distance);
+            metadata.retrieval_mtp_agreement.push_back(evidence.mtp_agreement);
+        }
+    }
+
+    const common_ngram_retrieval_metrics * retrieval_metrics(llama_seq_id seq_id) const override {
+        return &sinfos.at(seq_id).retrieval.metrics();
+    }
+};
+
 struct common_speculative {
     common_speculative_draft_params_vec dparams;
 
@@ -2449,6 +2570,7 @@ std::string common_speculative_type_to_str(common_speculative_type type) {
         case COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V: return "ngram-map-k4v";
         case COMMON_SPECULATIVE_TYPE_NGRAM_MOD:     return "ngram-mod";
         case COMMON_SPECULATIVE_TYPE_NGRAM_CACHE:   return "ngram-cache";
+        case COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL: return "ngram-retrieval";
         default:                                    return "unknown";
     }
 }
@@ -2533,6 +2655,7 @@ int32_t common_speculative_n_max(const common_params_speculative * spec) {
     bool has_ngram_map_k = false;
     bool has_ngram_map_k4v = false;
     bool has_ngram_mod = false;
+    bool has_ngram_retrieval = false;
 
     for (const auto type : spec->types) {
         switch (type) {
@@ -2569,6 +2692,11 @@ int32_t common_speculative_n_max(const common_params_speculative * spec) {
             case COMMON_SPECULATIVE_TYPE_NGRAM_CACHE:
                 n_max = std::max(n_max, spec->ngram_cache.n_max);
                 break;
+            case COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL:
+                has_ngram_retrieval = true;
+                n_max = std::max(n_max, spec->ngram_retrieval.n_max);
+                ngram_max = std::max(ngram_max, spec->ngram_retrieval.n_max);
+                break;
             case COMMON_SPECULATIVE_TYPE_NONE:
             case COMMON_SPECULATIVE_TYPE_COUNT:
                 break;
@@ -2586,6 +2714,9 @@ int32_t common_speculative_n_max(const common_params_speculative * spec) {
             ngram_max = std::max(ngram_max, 48);
         }
         if (has_ngram_mod) {
+            ngram_max = std::max(ngram_max, 48);
+        }
+        if (has_ngram_retrieval) {
             ngram_max = std::max(ngram_max, 48);
         }
     }
@@ -2851,7 +2982,7 @@ common_speculative * common_speculative_init(common_params_speculative & params,
         };
 
         // when adding a new type - update here the logic above
-        static_assert(COMMON_SPECULATIVE_TYPE_COUNT == 11);
+        static_assert(COMMON_SPECULATIVE_TYPE_COUNT == 12);
 
         // this list here defines the priority of the speculators
         // the one with highest priority are listed first
@@ -2860,6 +2991,7 @@ common_speculative * common_speculative_init(common_params_speculative & params,
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V);
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_NGRAM_MOD);
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_NGRAM_CACHE);
+        add_config_if_enabled(COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL);
 
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE);
         add_config_if_enabled(COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3, params.draft.ctx_dft != nullptr);
@@ -2987,6 +3119,10 @@ common_speculative * common_speculative_init(common_params_speculative & params,
                         params.ngram_cache.lookup_cache_static,
                         params.ngram_cache.lookup_cache_dynamic);
                 impls.push_back(std::make_unique<common_speculative_impl_ngram_cache>(state));
+                break;
+            }
+            case COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL: {
+                impls.push_back(std::make_unique<common_speculative_impl_ngram_retrieval>(config.params, n_seq));
                 break;
             }
             default:
@@ -3199,6 +3335,9 @@ void common_speculative_end(common_speculative * spec, llama_seq_id seq_id) {
 
     GGML_ASSERT(seq_id >= 0 && seq_id < (llama_seq_id) spec->dparams.size());
     spec->controller.end_request(seq_id);
+    for (auto & impl : spec->impls) {
+        impl->end(seq_id);
+    }
     common_speculative_trace_shadow_events(spec, seq_id);
     common_speculative_trace_hot_events(spec, seq_id);
     spec->impl_last[seq_id] = nullptr;
@@ -3312,6 +3451,14 @@ static void common_speculative_trace_decision(
         << ",\"hot_actual_length\":" << selection.prefix_length
         << ",\"hot_applied\":" << (selection.hot_applied ? "true" : "false")
         << ",\"hot_transition_reason\":\"" << hot_transition_names[selection.hot_transition_reason] << "\""
+        << ",\"predicted_position_survival\":[";
+    for (size_t i = 0; i < selection.prefix_confidence.size(); ++i) {
+        if (i > 0) {
+            out << ',';
+        }
+        out << selection.prefix_confidence[i];
+    }
+    out << "]"
         << ",\"candidates\":[";
     for (size_t i = 0; i < candidates.size(); ++i) {
         if (i > 0) {
@@ -3329,6 +3476,22 @@ static void common_speculative_trace_decision(
             << ",\"batch_size\":" << candidate.metadata.batch_size
             << ",\"ubatch_size\":" << candidate.metadata.ubatch_size
             << ",\"active_slots\":" << candidate.metadata.active_slots
+            << ",\"retrieval_evidence_key\":" << candidate.metadata.retrieval_evidence_key
+            << ",\"retrieval_verified_matches\":" << candidate.metadata.retrieval_verified_matches
+            << ",\"retrieval_alternatives\":" << candidate.metadata.retrieval_alternatives
+            << ",\"retrieval_policy\":" << (uint32_t) candidate.metadata.retrieval_policy
+            << ",\"retrieval_evidence\":[";
+        for (size_t j = 0; j < candidate.metadata.retrieval_match_length.size(); ++j) {
+            if (j > 0) {
+                out << ',';
+            }
+            out << "{\"match_length\":" << candidate.metadata.retrieval_match_length[j]
+                << ",\"source_support\":" << candidate.metadata.retrieval_source_support[j]
+                << ",\"dominance_permille\":" << candidate.metadata.retrieval_dominance_permille[j]
+                << ",\"source_distance\":" << candidate.metadata.retrieval_source_distance[j]
+                << ",\"mtp_agreement\":" << (candidate.metadata.retrieval_mtp_agreement[j] ? "true" : "false") << '}';
+        }
+        out << "]"
             << ",\"agreement_prefix\":[";
         for (size_t j = 0; j < candidate.metadata.agreement_prefix.size(); ++j) {
             if (j > 0) {
@@ -3390,7 +3553,9 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
 
         for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) local_params.size(); ++seq_id) {
             local_params[seq_id].drafting = requested[seq_id] &&
-                (impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP || allow_challengers[seq_id]);
+                (impl->type == COMMON_SPECULATIVE_TYPE_DRAFT_MTP ||
+                 impl->type == COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL ||
+                 allow_challengers[seq_id]);
             local_params[seq_id].result = &results[seq_id];
             if (spec->controller.max_verify() > 0) {
                 local_params[seq_id].n_max = std::min<int32_t>(
@@ -3448,12 +3613,19 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
             candidate.metadata.batch_size = spec->batch_size;
             candidate.metadata.ubatch_size = spec->ubatch_size;
             candidate.metadata.active_slots = active_slots;
-            candidate.provenance.push_back({
+            impl->fill_metadata(seq_id, candidate.metadata);
+            common_speculative_span candidate_span {
                 /* .producer_id      = */ impl->producer_id,
                 /* .configuration_id = */ impl->producer_id,
                 /* .begin            = */ 0,
                 /* .end              = */ (uint16_t) candidate.tokens.size(),
-            });
+            };
+            if (impl->type == COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL) {
+                candidate_span.feedback_valid = true;
+                candidate_span.feedback_key = candidate.metadata.retrieval_evidence_key;
+                candidate_span.feedback_value = candidate.metadata.retrieval_policy;
+            }
+            candidate.provenance.push_back(candidate_span);
             spec->candidates[seq_id].push_back(std::move(candidate));
         }
     }
@@ -3467,9 +3639,6 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
         }
 
         for (const auto & mtp : mtp_candidates) {
-            if (!allow_challengers[seq_id]) {
-                break;
-            }
             const int32_t n_max = spec->controller.max_verify() > 0
                 ? std::min<int32_t>(dparams[seq_id].n_max, std::max<uint32_t>(32, spec->controller.max_verify()))
                 : dparams[seq_id].n_max;
@@ -3487,7 +3656,11 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
                     impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K &&
                     impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_MAP_K4V &&
                     impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_MOD &&
-                    impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_CACHE) {
+                    impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_CACHE &&
+                    impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL) {
+                    continue;
+                }
+                if (!allow_challengers[seq_id] && impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL) {
                     continue;
                 }
 
@@ -3523,6 +3696,7 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
                 fused.metadata.batch_size = spec->batch_size;
                 fused.metadata.ubatch_size = spec->ubatch_size;
                 fused.metadata.active_slots = active_slots;
+                impl->fill_metadata(seq_id, fused.metadata);
                 fused.provenance.push_back({
                     /* .producer_id      = */ mtp.producer_id,
                     /* .configuration_id = */ mtp.configuration_id,
@@ -3549,6 +3723,21 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
             candidates[i].metadata.agreement_prefix.reserve(candidates.size());
             for (size_t j = 0; j < candidates.size(); ++j) {
                 candidates[i].metadata.agreement_prefix.push_back(i == j ? 0 : common_prefix_length(candidates[i].tokens, candidates[j].tokens));
+            }
+            if (candidates[i].type == COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL && candidates[i].provenance.size() == 1) {
+                for (const auto & peer : candidates) {
+                    if (peer.type != COMMON_SPECULATIVE_TYPE_DRAFT_MTP) {
+                        continue;
+                    }
+                    const size_t count = std::min({
+                        candidates[i].metadata.retrieval_mtp_agreement.size(),
+                        candidates[i].tokens.size(),
+                        peer.tokens.size(),
+                    });
+                    for (size_t position = 0; position < count; ++position) {
+                        candidates[i].metadata.retrieval_mtp_agreement[position] |= candidates[i].tokens[position] == peer.tokens[position];
+                    }
+                }
             }
         }
 
@@ -3626,6 +3815,7 @@ static void common_speculative_draft_controlled(common_speculative * spec) {
         common_speculative_trace_hot_events(spec, seq_id);
         if (selection.candidate_index >= 0) {
             auto & candidate = candidates[selection.candidate_index];
+            spec->controller.exclude_selected_shadow(candidate, seq_id);
             candidate.tokens.resize(std::min<size_t>(selection.prefix_length, candidate.tokens.size()));
             candidate.provenance.erase(
                     std::remove_if(candidate.provenance.begin(), candidate.provenance.end(), [&](const auto & span) {
@@ -3789,7 +3979,7 @@ static void common_speculative_accept_impl(
                 if (span_observed) {
                     update_stats(*impl, accepted);
                 }
-                if (fused_extension && span_observed) {
+                if ((fused_extension || impl->type == COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL) && span_observed && span.feedback_valid) {
                     impl->accept_extension(seq_id, accepted, span);
                 } else {
                     impl->accept(seq_id, state_accepted, fused_extension);
@@ -3896,6 +4086,31 @@ common_speculative_controller_metrics common_speculative_get_controller_metrics(
         return {};
     }
     auto result = spec->metrics;
+    for (const auto & impl : spec->impls) {
+        if (impl->type != COMMON_SPECULATIVE_TYPE_NGRAM_RETRIEVAL || impl->producer_id == 0) {
+            continue;
+        }
+        auto & producer = result.producers[impl->producer_id - 1];
+        for (llama_seq_id seq_id = 0; seq_id < (llama_seq_id) impl->n_seq; ++seq_id) {
+            const auto * metrics = impl->retrieval_metrics(seq_id);
+            if (metrics == nullptr) {
+                continue;
+            }
+            producer.retrieval_queries += metrics->queries;
+            producer.retrieval_verified_matches += metrics->verified_matches;
+            producer.retrieval_candidate_yield += metrics->candidates;
+            producer.retrieval_selected_prefixes += metrics->selected_prefixes;
+            producer.retrieval_accepted_tokens += metrics->accepted_tokens;
+            producer.retrieval_rejected_short_history += metrics->rejected_short_history;
+            producer.retrieval_rejected_no_hash_hit += metrics->rejected_no_hash_hit;
+            producer.retrieval_rejected_collision += metrics->rejected_collision;
+            producer.retrieval_rejected_no_continuation += metrics->rejected_no_continuation;
+            for (size_t i = 0; i < 4; ++i) {
+                producer.retrieval_match_tiers[i] += metrics->match_tiers[i];
+                producer.retrieval_support_tiers[i] += metrics->support_tiers[i];
+            }
+        }
+    }
     result.namespace_evictions = spec->controller.process_namespace_evictions();
     result.namespace_fallbacks = spec->controller.process_namespace_fallbacks();
     result.resident_namespaces = spec->controller.process_namespace_count();

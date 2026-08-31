@@ -4357,6 +4357,16 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         }
     ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
     add_opt(common_arg(
+        {"--spec-ngram-retrieval-n-max"}, "N",
+        string_format("maximum number of ngram-retrieval draft tokens (default: %d)", params.speculative.ngram_retrieval.n_max),
+        [](common_params & params, int value) {
+            if (value < 8 || value > 48) {
+                throw std::invalid_argument("ngram-retrieval n-max must be between 8 and 48 inclusive");
+            }
+            params.speculative.ngram_retrieval.n_max = value;
+        }
+    ).set_spec().set_examples({LLAMA_EXAMPLE_SPECULATIVE, LLAMA_EXAMPLE_SERVER, LLAMA_EXAMPLE_CLI}));
+    add_opt(common_arg(
         {"--spec-ngram-mod-n-min"}, "N",
         string_format("minimum number of ngram tokens to use for ngram-based speculative decoding (default: %d)", params.speculative.ngram_mod.n_min),
         [](common_params & params, int value) {

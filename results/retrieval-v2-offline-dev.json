@@ -1,0 +1,205 @@
+{
+  "policies": {
+    "longest-recency": {
+      "acceptance": 0.7193634689552135,
+      "accepted_tokens": 41408,
+      "accepted_tokens_per_cycle": 16.43174603174603,
+      "calibration_brier": 0.014967194735057377,
+      "candidate_coverage": 0.7134920634920635,
+      "cycles": 2520,
+      "estimated_goodput_tokens_per_us": 0.0007187341613958106,
+      "proposed_tokens": 57562,
+      "workloads": {
+        "ambiguous_key": {
+          "acceptance": 0.06418219461697723,
+          "accepted_tokens": 31,
+          "candidate_coverage": 1.0,
+          "cycles": 11,
+          "proposed_tokens": 483
+        },
+        "circuit_recovery": {
+          "acceptance": 0.4484522207267833,
+          "accepted_tokens": 1666,
+          "candidate_coverage": 0.8157894736842105,
+          "cycles": 114,
+          "proposed_tokens": 3715
+        },
+        "consistent_key": {
+          "acceptance": 0.1602112676056338,
+          "accepted_tokens": 273,
+          "candidate_coverage": 0.390625,
+          "cycles": 128,
+          "proposed_tokens": 1704
+        },
+        "cooldown_recovery_long": {
+          "acceptance": 0.892333049766057,
+          "accepted_tokens": 16783,
+          "candidate_coverage": 0.9687964338781575,
+          "cycles": 673,
+          "proposed_tokens": 18808
+        },
+        "exact_local_copy": {
+          "acceptance": 0.5847457627118644,
+          "accepted_tokens": 1656,
+          "candidate_coverage": 1.0,
+          "cycles": 59,
+          "proposed_tokens": 2832
+        },
+        "fusion_bridge": {
+          "acceptance": 0.0041841004184100415,
+          "accepted_tokens": 1,
+          "candidate_coverage": 0.0375,
+          "cycles": 160,
+          "proposed_tokens": 239
+        },
+        "regime_change": {
+          "acceptance": 0.3415841584158416,
+          "accepted_tokens": 276,
+          "candidate_coverage": 0.20869565217391303,
+          "cycles": 115,
+          "proposed_tokens": 808
+        }
+      }
+    },
+    "majority-prefix": {
+      "acceptance": 0.718903451443106,
+      "accepted_tokens": 40700,
+      "accepted_tokens_per_cycle": 16.150793650793652,
+      "calibration_brier": 0.014642044286574157,
+      "candidate_coverage": 0.7134920634920635,
+      "cycles": 2520,
+      "estimated_goodput_tokens_per_us": 0.0007182640246786342,
+      "proposed_tokens": 56614,
+      "workloads": {
+        "ambiguous_key": {
+          "acceptance": 0.11,
+          "accepted_tokens": 55,
+          "candidate_coverage": 1.0,
+          "cycles": 11,
+          "proposed_tokens": 500
+        },
+        "circuit_recovery": {
+          "acceptance": 0.4484522207267833,
+          "accepted_tokens": 1666,
+          "candidate_coverage": 0.8157894736842105,
+          "cycles": 114,
+          "proposed_tokens": 3715
+        },
+        "consistent_key": {
+          "acceptance": 0.18669527896995708,
+          "accepted_tokens": 348,
+          "candidate_coverage": 0.390625,
+          "cycles": 128,
+          "proposed_tokens": 1864
+        },
+        "cooldown_recovery_long": {
+          "acceptance": 0.892333049766057,
+          "accepted_tokens": 16783,
+          "candidate_coverage": 0.9687964338781575,
+          "cycles": 673,
+          "proposed_tokens": 18808
+        },
+        "exact_local_copy": {
+          "acceptance": 0.5353805073431241,
+          "accepted_tokens": 1203,
+          "candidate_coverage": 1.0,
+          "cycles": 59,
+          "proposed_tokens": 2247
+        },
+        "fusion_bridge": {
+          "acceptance": 0.0041841004184100415,
+          "accepted_tokens": 1,
+          "candidate_coverage": 0.0375,
+          "cycles": 160,
+          "proposed_tokens": 239
+        },
+        "regime_change": {
+          "acceptance": 0.3415841584158416,
+          "accepted_tokens": 276,
+          "candidate_coverage": 0.20869565217391303,
+          "cycles": 115,
+          "proposed_tokens": 808
+        }
+      }
+    },
+    "weighted-prefix": {
+      "acceptance": 0.7200263048594767,
+      "accepted_tokens": 41606,
+      "accepted_tokens_per_cycle": 16.51031746031746,
+      "calibration_brier": 0.015367566965296713,
+      "candidate_coverage": 0.7134920634920635,
+      "cycles": 2520,
+      "estimated_goodput_tokens_per_us": 0.0007193988352952568,
+      "proposed_tokens": 57784,
+      "workloads": {
+        "ambiguous_key": {
+          "acceptance": 0.11,
+          "accepted_tokens": 55,
+          "candidate_coverage": 1.0,
+          "cycles": 11,
+          "proposed_tokens": 500
+        },
+        "circuit_recovery": {
+          "acceptance": 0.4484522207267833,
+          "accepted_tokens": 1666,
+          "candidate_coverage": 0.8157894736842105,
+          "cycles": 114,
+          "proposed_tokens": 3715
+        },
+        "consistent_key": {
+          "acceptance": 0.18669527896995708,
+          "accepted_tokens": 348,
+          "candidate_coverage": 0.390625,
+          "cycles": 128,
+          "proposed_tokens": 1864
+        },
+        "cooldown_recovery_long": {
+          "acceptance": 0.892333049766057,
+          "accepted_tokens": 16783,
+          "candidate_coverage": 0.9687964338781575,
+          "cycles": 673,
+          "proposed_tokens": 18808
+        },
+        "exact_local_copy": {
+          "acceptance": 0.5847457627118644,
+          "accepted_tokens": 1656,
+          "candidate_coverage": 1.0,
+          "cycles": 59,
+          "proposed_tokens": 2832
+        },
+        "fusion_bridge": {
+          "acceptance": 0.0041841004184100415,
+          "accepted_tokens": 1,
+          "candidate_coverage": 0.0375,
+          "cycles": 160,
+          "proposed_tokens": 239
+        },
+        "regime_change": {
+          "acceptance": 0.3415841584158416,
+          "accepted_tokens": 276,
+          "candidate_coverage": 0.20869565217391303,
+          "cycles": 115,
+          "proposed_tokens": 808
+        }
+      }
+    }
+  },
+  "selected_policy": "weighted-prefix",
+  "split": "development",
+  "workload_names": [
+    "exact_local_copy",
+    "consistent_key",
+    "ambiguous_key",
+    "fusion_bridge",
+    "regime_change",
+    "circuit_recovery",
+    "cooldown_recovery_long",
+    "exact_local_copy",
+    "consistent_key",
+    "ambiguous_key",
+    "fusion_bridge",
+    "regime_change",
+    "circuit_recovery",
+    "cooldown_recovery_long"
+  ]
+}

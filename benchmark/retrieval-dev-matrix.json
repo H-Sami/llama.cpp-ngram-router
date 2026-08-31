@@ -1,0 +1,65 @@
+{
+  "configs": [
+    {
+      "name": "retrieval-v2",
+      "description": "Second-generation multi-anchor retrieval with shadow-gated admission.",
+      "suites": ["full"],
+      "env": {
+        "LLAMA_SERVER": "/home/pc/Work/llama.cpp-retrieval/build-vulkan-retrieval-v2/bin/llama-server",
+        "SPEC_TYPES": "draft-mtp,ngram-retrieval",
+        "SPEC_CONTROLLER": "adaptive",
+        "NGRAM_RETRIEVAL_MAX": "48"
+      }
+    },
+    {
+      "name": "retrieval-8",
+      "description": "Development-only retrieval depth 8.",
+      "suites": ["full"],
+      "env": {
+        "SPEC_TYPES": "draft-mtp,ngram-retrieval",
+        "SPEC_CONTROLLER": "adaptive",
+        "NGRAM_RETRIEVAL_MAX": "8"
+      }
+    },
+    {
+      "name": "retrieval-24",
+      "description": "Development-only retrieval depth 24.",
+      "suites": ["full"],
+      "env": {
+        "SPEC_TYPES": "draft-mtp,ngram-retrieval",
+        "SPEC_CONTROLLER": "adaptive",
+        "NGRAM_RETRIEVAL_MAX": "24"
+      }
+    },
+    {
+      "name": "retrieval-32",
+      "description": "Development-only retrieval depth 32.",
+      "suites": ["full"],
+      "env": {
+        "SPEC_TYPES": "draft-mtp,ngram-retrieval",
+        "SPEC_CONTROLLER": "adaptive",
+        "NGRAM_RETRIEVAL_MAX": "32"
+      }
+    },
+    {
+      "name": "retrieval-48",
+      "description": "Development-only retrieval depth 48.",
+      "suites": ["full"],
+      "env": {
+        "SPEC_TYPES": "draft-mtp,ngram-retrieval",
+        "SPEC_CONTROLLER": "adaptive",
+        "NGRAM_RETRIEVAL_MAX": "48"
+      }
+    },
+    {
+      "name": "hybrid",
+      "description": "Development-only legacy portfolio plus retrieval.",
+      "suites": ["full"],
+      "env": {
+        "SPEC_TYPES": "draft-mtp,ngram-cache,ngram-simple,ngram-mod,ngram-map-k,ngram-map-k4v,ngram-retrieval",
+        "SPEC_CONTROLLER": "adaptive",
+        "NGRAM_RETRIEVAL_MAX": "48"
+      }
+    }
+  ]
+}

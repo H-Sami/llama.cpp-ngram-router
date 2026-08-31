@@ -1,0 +1,45 @@
+{
+  "checks": {
+    "acceptance_70pct": false,
+    "accepted_tokens_per_cycle_50pct": false,
+    "accepted_tokens_per_selection_8": true,
+    "exact_output": false,
+    "negative_controls": true,
+    "prompt_regression": true,
+    "query_p95_100us": true,
+    "repeat_throughput_15pct": false,
+    "rss_128mib": false,
+    "selection_rate_18pct": false,
+    "throughput_5pct": false,
+    "zero_idle_cpu": true
+  },
+  "failed_funnel_stages": [
+    "exact_output",
+    "acceptance_70pct",
+    "selection_rate_18pct",
+    "accepted_tokens_per_cycle_50pct",
+    "throughput_5pct",
+    "repeat_throughput_15pct",
+    "rss_128mib"
+  ],
+  "passed": false,
+  "values": {
+    "accepted_tokens_per_selection": 11.75,
+    "additional_rss_bytes": 150114304,
+    "current_accepted_tokens_per_cycle": 1.3817567567567568,
+    "exact_on_stable_mtp": false,
+    "idle_server_cpu_ms": 0,
+    "negative_control_regressions": {
+      "near_match_trap": 0.3938722691634313,
+      "novel_reasoning": -0.00023139598883437085
+    },
+    "prompt_processing_regression": 0.012727735271060414,
+    "repeat_throughput_improvement": -0.09008555417429642,
+    "retrieval_acceptance": 0.6911764705882353,
+    "retrieval_accepted_tokens_per_cycle": 0.7988668555240793,
+    "retrieval_query_p95_us": 22,
+    "retrieval_selection_rate": 0.0679886685552408,
+    "stable_mtp_workloads": 6,
+    "throughput_improvement": 0.031825034203739166
+  }
+}
